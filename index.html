@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>音符アプリ</title>
+
+  <!-- htmlの設定 -->
+    <link rel="stylesheet" href="style.css">
+    <meta name="theme-color" content="#ffffff"> <!--webサイトのテーマカラー-->
+
+  <!-- PWAの設定 -->
+    <link rel="manifest" href="manifest.json"> <!-- PWA標準の設定ファイル（主にandroid） -->
+    <meta name="apple-mobile-web-app-title" content="音符"> <!-- PWA iOS専用 設定タグ アイコン下に表示される文字列 -->
+    <meta name="apple-mobile-web-app-capable" content="yes"> <!-- PWA iOS専用 設定タグ Safariではなくアプリとして起動する（外観） -->
+    <link rel="apple-touch-icon" href="icons/icon-180.png"> <!-- PWA iOS専用 設定タグ アイコン設定 -->
+
+</head>
+
+<!-- sw.js をserviceWorkerとして登録する（ここで登録された sw.js が serviceWorker をインストールする） -->
+<script>
+  if ("serviceWorker" in navigator) {
+
+    navigator.serviceWorker.register("./sw.js")
+      .then(() => {
+        console.log("Service Workerを登録しました");
+      })
+      .catch(error => {
+        console.error("Service Workerの登録に失敗しました:", error);
+      });
+
+  }
+</script>
+
+<body>
+
+
+  <div id="imageArea">
+
+    <img
+      id="onpuImage"
+      src="note.png"
+      alt="音符図"
+      draggable="false"
+    >
+
+
+    <!-- タップ位置の光 -->
+
+    <div id="flashMarker"></div>
+
+
+    <!--
+      キー変更オブジェクト
+
+      画像の上に重ねるため、
+      imageArea の中に入れてある
+    -->
+
+    <div id="keyControl">
+
+      <button
+        id="keyDown"
+        type="button"
+      >
+        −
+      </button>
+
+
+      <button
+        id="keyDisplay"
+        type="button"
+        title="押すとキー0に戻ります"
+      >
+        0
+      </button>
+
+
+      <button
+        id="keyUp"
+        type="button"
+      >
+        ＋
+      </button>
+
+    </div>
+
+  </div>
+
+
+  <!--
+    notes.js を先に読む
+  -->
+
+  <script src="notes.js"></script>
+
+  <!--
+    アプリ本体
+  -->
+
+  <script src="script.js"></script>
+
+
+</body>
+
+</html>
