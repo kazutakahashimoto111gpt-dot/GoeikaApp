@@ -58,10 +58,16 @@ const hitRadius =
 // キーコントローラーの中心になる
 // =====================================
 
+const isSmartphone =
+  window.innerWidth <= 600;
+
 const keyControlPosition = {
 
   x: 0.495,
-  y: 0.91
+
+  y: isSmartphone
+    ? 0.95   // スマホ
+    : 0.91   // PC・タブレット
 
 };
 
