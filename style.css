@@ -332,10 +332,6 @@ body {
 
 @media (orientation: landscape) {
 
-  /* #keyControl {
-    display: none;
-  } */
-
   #imageArea {
     transform: translateY(-3dvh);
   }
