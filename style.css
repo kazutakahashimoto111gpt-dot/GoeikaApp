@@ -30,6 +30,14 @@ body {
 }
 
 
+/* ブラウザ特有の挙動（ダブルタップで選択、など）を抑制 */
+body {
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
+
+
 
 /* =====================================
    画像エリア
