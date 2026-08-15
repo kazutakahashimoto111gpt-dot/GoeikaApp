@@ -5,7 +5,7 @@
 // バージョンを変更する
 // ====================================================
 
-const CACHE_NAME = "v1.0.6";
+const CACHE_NAME = "v1.0.7";
 
 
 // ========================================
@@ -77,14 +77,13 @@ self.addEventListener("activate", event => {
 
 
 // ========================================
-// ③ ネットワーク優先
+// ③ 通信処理
 //
-// オンライン
-//   → ネットから最新版を取得して表示
-//   → 同時にキャッシュも最新版へ更新
+// 画像
+//   → キャッシュ優先
 //
-// オフライン
-//   → キャッシュから表示
+// HTML / CSS / JavaScriptなど
+//   → ネットワーク優先
 // ========================================
 
 self.addEventListener("fetch", event => {
@@ -95,11 +94,81 @@ self.addEventListener("fetch", event => {
   }
 
 
-  event.respondWith(
+  // =====================================
+  // 画像の場合
+  //
+  // キャッシュ優先
+  // =====================================
 
-    // ----------------------------
-    // まずネットから最新版を取得
-    // ----------------------------
+  if (
+    event.request.destination === "image"
+  ) {
+
+    event.respondWith(
+
+      caches.match(event.request)
+
+        .then(cachedResponse => {
+
+          // キャッシュがあれば即表示
+          if (cachedResponse) {
+            return cachedResponse;
+          }
+
+
+          // キャッシュになければネットから取得
+          return fetch(event.request)
+
+            .then(networkResponse => {
+
+              // 正常に取得できた画像を
+              // キャッシュにも保存
+
+              if (
+                networkResponse &&
+                networkResponse.status === 200 &&
+                event.request.url.startsWith(self.location.origin)
+              ) {
+
+                const responseClone =
+                  networkResponse.clone();
+
+
+                caches.open(CACHE_NAME)
+                  .then(cache => {
+
+                    cache.put(
+                      event.request,
+                      responseClone
+                    );
+
+                  });
+
+              }
+
+
+              return networkResponse;
+
+            });
+
+        })
+
+    );
+
+
+    // ここで終了
+    return;
+
+  }
+
+
+  // =====================================
+  // 画像以外
+  //
+  // ネットワーク優先
+  // =====================================
+
+  event.respondWith(
 
     fetch(event.request, {
       cache: "no-store"
@@ -107,10 +176,8 @@ self.addEventListener("fetch", event => {
 
       .then(networkResponse => {
 
-        // ----------------------------
         // 正常に取得できたものだけ
         // キャッシュにも保存
-        // ----------------------------
 
         if (
           networkResponse &&
@@ -135,22 +202,17 @@ self.addEventListener("fetch", event => {
         }
 
 
-        // ----------------------------
         // ネットから取得した最新版を表示
-        // ----------------------------
 
         return networkResponse;
 
       })
 
 
-      // ----------------------------
       // ネットから取得できなかった場合
-      // ----------------------------
+      // キャッシュを使用
 
       .catch(() => {
-
-        // キャッシュから表示
 
         return caches.match(
           event.request
