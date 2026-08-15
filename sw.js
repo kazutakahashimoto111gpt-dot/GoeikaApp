@@ -16,8 +16,10 @@ const FILES_TO_CACHE = [
   "./",
   "./index.html",
   "./style.css",
-  "./app.js",
+  "./script.js",
   "./manifest.json",
+  "./notes.js",
+  "./note.png",
 
   // PWAアイコン
   "./icons/icon-192.png",
