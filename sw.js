@@ -22,7 +22,7 @@ const FILES_TO_CACHE = [
   // PWAアイコン
   "./icons/icon-192.png",
   "./icons/icon-512.png",
-  "./apple-touch-icon.png"
+  "./icons/apple-touch-icon.png"
 ];
 
 
