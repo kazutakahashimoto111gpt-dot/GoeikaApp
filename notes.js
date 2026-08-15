@@ -2,7 +2,7 @@ const notes = [
 
   {
     no: 1,
-    name: "No.1",
+    name: "黄鐘（おうしき）",
     xRatio: 0.3098,
     yRatio: 0.5365,
     frequency: 220.000
@@ -10,7 +10,7 @@ const notes = [
 
   {
     no: 2,
-    name: "No.2",
+    name: "鸞鏡（らんげい）",
     xRatio: 0.3081,
     yRatio: 0.4594,
     frequency: 233.082
@@ -18,7 +18,7 @@ const notes = [
 
   {
     no: 3,
-    name: "No.3",
+    name: "盤渉（ばんしき）",
     xRatio: 0.3385,
     yRatio: 0.3888,
     frequency: 246.942
@@ -26,7 +26,7 @@ const notes = [
 
   {
     no: 4,
-    name: "No.4",
+    name: "神仙（しんせん）",
     xRatio: 0.3878,
     yRatio: 0.336,
     frequency: 261.626
@@ -34,7 +34,7 @@ const notes = [
 
   {
     no: 5,
-    name: "No.5",
+    name: "一",
     xRatio: 0.4478,
     yRatio: 0.3084,
     frequency: 277.183
@@ -42,7 +42,7 @@ const notes = [
 
   {
     no: 6,
-    name: "No.6",
+    name: "一半",
     xRatio: 0.5472,
     yRatio: 0.211,
     frequency: 293.665
@@ -50,7 +50,7 @@ const notes = [
 
   {
     no: 7,
-    name: "No.7",
+    name: "二",
     xRatio: 0.6557,
     yRatio: 0.2597,
     frequency: 311.127
@@ -58,7 +58,7 @@ const notes = [
 
   {
     no: 8,
-    name: "No.8",
+    name: "二半",
     xRatio: 0.7329,
     yRatio: 0.3336,
     frequency: 329.628
@@ -66,7 +66,7 @@ const notes = [
 
   {
     no: 9,
-    name: "No.9",
+    name: "三",
     xRatio: 0.7699,
     yRatio: 0.4375,
     frequency: 349.228
@@ -74,7 +74,7 @@ const notes = [
 
   {
     no: 10,
-    name: "No.10",
+    name: "三半",
     xRatio: 0.7724,
     yRatio: 0.5544,
     frequency: 369.994
@@ -82,7 +82,7 @@ const notes = [
 
   {
     no: 11,
-    name: "No.11",
+    name: "四",
     xRatio: 0.7354,
     yRatio: 0.6477,
     frequency: 391.995
@@ -90,7 +90,7 @@ const notes = [
 
   {
     no: 12,
-    name: "No.12",
+    name: "四半",
     xRatio: 0.6549,
     yRatio: 0.7297,
     frequency: 415.305
@@ -98,7 +98,7 @@ const notes = [
 
   {
     no: 13,
-    name: "No.13",
+    name: "五",
     xRatio: 0.5538,
     yRatio: 0.7808,
     frequency: 440.000
@@ -106,7 +106,7 @@ const notes = [
 
   {
     no: 14,
-    name: "No.14",
+    name: "五半",
     xRatio: 0.4339,
     yRatio: 0.7768,
     frequency: 466.164
@@ -114,7 +114,7 @@ const notes = [
 
   {
     no: 15,
-    name: "No.15",
+    name: "六",
     xRatio: 0.3328,
     yRatio: 0.733,
     frequency: 493.883
@@ -122,7 +122,7 @@ const notes = [
 
   {
     no: 16,
-    name: "No.16",
+    name: "六半",
     xRatio: 0.2547,
     yRatio: 0.6583,
     frequency: 523.251
@@ -130,7 +130,7 @@ const notes = [
 
   {
     no: 17,
-    name: "No.17",
+    name: "七",
     xRatio: 0.2136,
     yRatio: 0.5308,
     frequency: 554.365
@@ -138,7 +138,7 @@ const notes = [
 
   {
     no: 18,
-    name: "No.18",
+    name: "七半",
     xRatio: 0.1002,
     yRatio: 0.3888,
     frequency: 587.330
@@ -146,7 +146,7 @@ const notes = [
 
   {
     no: 19,
-    name: "No.19",
+    name: "八",
     xRatio: 0.1619,
     yRatio: 0.2695,
     frequency: 622.254
@@ -154,7 +154,7 @@ const notes = [
 
   {
     no: 20,
-    name: "No.20",
+    name: "八半",
     xRatio: 0.2753,
     yRatio: 0.1494,
     frequency: 659.255
@@ -162,7 +162,7 @@ const notes = [
 
   {
     no: 21,
-    name: "No.21",
+    name: "九",
     xRatio: 0.41,
     yRatio: 0.0893,
     frequency: 698.456
@@ -170,7 +170,7 @@ const notes = [
 
   {
     no: 22,
-    name: "No.22",
+    name: "九半",
     xRatio: 0.5735,
     yRatio: 0.0909,
     frequency: 739.989
@@ -178,7 +178,7 @@ const notes = [
 
   {
     no: 23,
-    name: "No.23",
+    name: "十",
     xRatio: 0.7058,
     yRatio: 0.1461,
     frequency: 783.991
@@ -186,7 +186,7 @@ const notes = [
 
   {
     no: 24,
-    name: "No.24",
+    name: "十半",
     xRatio: 0.825,
     yRatio: 0.2687,
     frequency: 830.609
@@ -194,7 +194,7 @@ const notes = [
 
   {
     no: 25,
-    name: "No.25",
+    name: "十一",
     xRatio: 0.8858,
     yRatio: 0.4075,
     frequency: 880.000
