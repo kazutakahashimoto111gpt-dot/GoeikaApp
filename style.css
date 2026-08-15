@@ -325,3 +325,19 @@ body {
   }
 
 }
+
+/* =====================================
+   横向き表示
+   ===================================== */
+
+@media (orientation: landscape) {
+
+  body {
+    height: 100dvh;
+  }
+
+  #keyControl {
+    display: none;
+  }
+
+}
