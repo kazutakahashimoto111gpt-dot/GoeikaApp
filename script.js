@@ -611,7 +611,7 @@ function flash(
 // =====================================
 
 image.addEventListener(
-  "click",
+  "pointerdown",
 
   async function(event) {
 
