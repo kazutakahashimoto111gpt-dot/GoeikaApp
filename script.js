@@ -66,7 +66,7 @@ const keyControlPosition = {
   x: 0.495,
 
   y: isSmartphone
-    ? 1.00   // スマホ
+    ? 1.05   // スマホ
     : 0.91   // PC・タブレット
 
 };
