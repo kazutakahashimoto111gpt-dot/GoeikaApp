@@ -335,7 +335,7 @@ body {
   (pointer: coarse) {
 
   #imageArea {
-    transform: translateY(-2dvh);
+    transform: translateY(-3dvh);
   }
 
 }
