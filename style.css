@@ -327,10 +327,12 @@ body {
 }
 
 /* =====================================
-   横向き表示
+   スマホ・タブレットの横向き表示
    ===================================== */
 
-@media (orientation: landscape) {
+@media
+  (orientation: landscape) and
+  (pointer: coarse) {
 
   #imageArea {
     transform: translateY(-3dvh);
