@@ -1,10 +1,11 @@
 // ====================================================
 // キャッシュの名前
-// 大きな仕様変更をしたときは v2, v3... と変更する
-// 内容を変更してキャッシュ名を変更し忘れると、更新されない
+//
+// 大きな仕様変更や、キャッシュを一式更新したいときに
+// バージョンを変更する
 // ====================================================
 
-const CACHE_NAME = "v1.0.1";
+const CACHE_NAME = "v1.0.2";
 
 
 // ========================================
@@ -12,7 +13,7 @@ const CACHE_NAME = "v1.0.1";
 // ========================================
 
 const FILES_TO_CACHE = [
-  "./", 
+  "./",
   "./index.html",
   "./style.css",
   "./app.js",
@@ -21,7 +22,7 @@ const FILES_TO_CACHE = [
   // PWAアイコン
   "./icons/icon-192.png",
   "./icons/icon-512.png",
-  "./icons/icon-180.png"
+  "./apple-touch-icon.png"
 ];
 
 
@@ -74,7 +75,14 @@ self.addEventListener("activate", event => {
 
 
 // ========================================
-// ③ キャッシュから即表示しつつ、裏で最新版を取得
+// ③ ネットワーク優先
+//
+// オンライン
+//   → ネットから最新版を取得して表示
+//   → 同時にキャッシュも最新版へ更新
+//
+// オフライン
+//   → キャッシュから表示
 // ========================================
 
 self.addEventListener("fetch", event => {
@@ -84,55 +92,67 @@ self.addEventListener("fetch", event => {
     return;
   }
 
+
   event.respondWith(
 
-    caches.match(event.request)
-      .then(cachedResponse => {
+    // ----------------------------
+    // まずネットから最新版を取得
+    // ----------------------------
+
+    fetch(event.request, {
+      cache: "no-store"
+    })
+
+      .then(networkResponse => {
 
         // ----------------------------
-        // 裏でネットから最新版を取得
+        // 正常に取得できたものだけ
+        // キャッシュにも保存
         // ----------------------------
-        const fetchPromise = fetch(event.request)
 
-          .then(networkResponse => {
+        if (
+          networkResponse &&
+          networkResponse.status === 200 &&
+          event.request.url.startsWith(self.location.origin)
+        ) {
 
-            // 正常に取得できたものだけ保存
-            if (
-              networkResponse &&
-              networkResponse.status === 200 &&
-              event.request.url.startsWith(self.location.origin)
-            ) {
-
-              const responseClone = networkResponse.clone();
-
-              caches.open(CACHE_NAME)
-                .then(cache => {
-                  cache.put(event.request, responseClone);
-                });
-
-            }
-
-            return networkResponse;
-
-          })
-
-          .catch(() => {
-            // オフラインなどで取得失敗した場合は何もしない
-          });
+          const responseClone =
+            networkResponse.clone();
 
 
-        // ----------------------------
-        // キャッシュがあれば即返す
-        // ----------------------------
-        if (cachedResponse) {
-          return cachedResponse;
+          caches.open(CACHE_NAME)
+            .then(cache => {
+
+              cache.put(
+                event.request,
+                responseClone
+              );
+
+            });
+
         }
 
 
         // ----------------------------
-        // キャッシュになければネットから返す
+        // ネットから取得した最新版を表示
         // ----------------------------
-        return fetchPromise;
+
+        return networkResponse;
+
+      })
+
+
+      // ----------------------------
+      // ネットから取得できなかった場合
+      // ----------------------------
+
+      .catch(() => {
+
+        // キャッシュから表示
+
+        return caches.match(
+          event.request
+        );
 
       })
 
