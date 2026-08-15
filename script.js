@@ -67,7 +67,7 @@ const keyControlPosition = {
 
   y: isSmartphone
     ? 1.10   // スマホ　最適な値は 1.10
-    : 0.86   // PC・タブレット
+    : 0.927   // PC・タブレット
 
 };
 
