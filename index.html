@@ -12,11 +12,13 @@
     <link rel="stylesheet" href="style.css">
     <meta name="theme-color" content="#ffffff"> <!--webサイトのテーマカラー-->
 
-  <!-- PWAの設定 -->
+  <!-- webサイトではなくPWAとしての起動するための設定 -->
     <link rel="manifest" href="manifest.json"> <!-- PWA標準の設定ファイル（主にandroid） -->
-    <meta name="apple-mobile-web-app-title" content="音符"> <!-- PWA iOS専用 設定タグ アイコン下に表示される文字列 -->
-    <meta name="apple-mobile-web-app-capable" content="yes"> <!-- PWA iOS専用 設定タグ Safariではなくアプリとして起動する（外観） -->
-    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png"> <!-- PWA iOS専用 設定タグ アイコン設定 -->
+    <meta name="apple-mobile-web-app-title" content="音符"> <!-- iOS専用 設定タグ アイコン下に表示される文字列 -->
+    <meta name="apple-mobile-web-app-capable" content="yes"> <!-- 設定タグ iPhone / Safari向け -->
+    <meta name="mobile-web-app-capable" content="yes"> <!-- 設定タグ 一般的なPWA向け -->
+>
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png"> <!-- iOS専用 設定タグ アイコン設定 -->
 
 </head>
 
