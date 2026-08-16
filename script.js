@@ -319,6 +319,17 @@ keyDisplay.addEventListener(
 updateKeyDisplay();
 
 
+// =====================================
+// iPhone マナーモード対策
+// =====================================
+
+if ("audioSession" in navigator) { //Audio Session APIに対応していないブラウザではこの処理をスキップするため、従来どおり動作する。
+
+  navigator.audioSession.type =
+    "playback";
+
+}
+
 
 // ============================================
 // AudioContext(実際に音を扱うオブジェクト)を作成
