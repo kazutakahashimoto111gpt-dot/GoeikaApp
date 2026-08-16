@@ -32,9 +32,9 @@ body {
 
 /* ブラウザ特有の挙動（ダブルタップで選択、など）を抑制 */
 body {
-  user-select: none;
-  -webkit-user-select: none;
-  touch-action: manipulation;
+  user-select: none; /*文字や要素を選択できないようにする*/
+  -webkit-user-select: none; /*上と同じだがこちらはSafariなどWebKit系ブラウザに対応*/
+  touch-action: manipulation; /*特にスマホブラウザで発生する、ダブルタップなどに関連する標準ジェスチャーを抑制*/
 }
 
 
@@ -45,7 +45,7 @@ body {
 
 #imageArea {
 
-  position: relative;
+  position: relative; /* 左上を（0，0）とする座標をつくる。position: absolute; の要素はこの基準に従って配置される */
 
   display: inline-block;
 
@@ -76,44 +76,44 @@ body {
 
   object-fit: contain;
 
-  cursor: pointer;
+  cursor: pointer; /* マウスカーソルを指カーソルにする */
 
-  user-select: none;
+  user-select: none; /*文字や要素を選択できないようにする*/
 
-  -webkit-user-select: none;
+  -webkit-user-select: none; /*上と同じだがこちらはSafariなどWebKit系ブラウザに対応*/
 
-  -webkit-touch-callout: none;
+  -webkit-touch-callout: none; /*長押しによるメニュー表示を抑制*/
 
-  touch-action: manipulation;
+  touch-action: manipulation; /*ダブルタップなどに関連する標準ジェスチャーを抑制*/
 
 }
 
 
 
-/* =====================================
-   タップした場所の光
-   ===================================== */
+/* ===========================================
+   タップした場所の光（位置はJavaScript側で決定）
+   =========================================== */
 
-#flashMarker {
+#flashMarker { /*黄色く光る円を作り、画像上の好きな場所に置けるようにして、普段は透明にしておく*/
 
-  position: absolute;
+  position: absolute; /*指定された座標に置けるようにする*/
 
   width: 70px;
   height: 70px;
 
-  border-radius: 50%;
+  border-radius: 50%; /* 円形にする */
 
   transform:
-    translate(-50%, -50%);
+    translate(-50%, -50%); /*基準をタップ位置に合わせる 何もしないと要素の左上が基準になる*/
 
-  pointer-events: none;
+  pointer-events: none; /*フラッシュマーカー自身がタップ判定を持たないようにする*/
 
-  opacity: 0;
+  opacity: 0; /*透明度を0にして初期状態では非表示にする*/
 
-  background:
+  background: /*円本体の色*/
     rgba(255, 220, 70, 0.65);
 
-  box-shadow:
+  box-shadow: /*影を3つ重ねて光を表現*/
 
     0 0 15px
     rgba(255, 220, 70, 1),
@@ -127,7 +127,7 @@ body {
 }
 
 
-#flashMarker.flash {
+#flashMarker.flash { /*htmlでは id flashMarker のみ。タップでjsが flash というclassを付与する*/
 
   animation:
     tapFlash 0.35s ease-out;
@@ -135,9 +135,9 @@ body {
 }
 
 
-@keyframes tapFlash {
+@keyframes tapFlash { /*tapFlash という名前のアニメーションを定義する*/
 
-  0% {
+  0% { /*アニメーション開始*/
 
     opacity: 1;
 
@@ -148,7 +148,7 @@ body {
   }
 
 
-  40% {
+  40% { /*アニメーションの途中*/
 
     opacity: 0.9;
 
@@ -159,7 +159,7 @@ body {
   }
 
 
-  100% {
+  100% { /*アニメーション終了*/
 
     opacity: 0;
 
@@ -180,7 +180,7 @@ body {
    画像座標から決定する
    ===================================== */
 
-#keyControl {
+#keyControl { /*3つのボタンをまとめる*/
 
   position: absolute;
 
@@ -190,17 +190,17 @@ body {
   */
 
   transform:
-    translate(-50%, -50%);
+    translate(-50%, -50%); /*基準をタップ位置に合わせる 何もしないと要素の左上が基準になる*/
 
   display: flex;
 
-  align-items: center;
+  align-items: center; /* 縦方向の中央揃え */
 
-  gap: 10px;
+  gap: 10px; /*子要素同士の間隔*/
 
   padding: 8px 12px;
 
-  border-radius: 30px;
+  border-radius: 30px; /* 箱のカドに丸みをつける */
 
   background:
     rgba(255, 255, 255, 0.92);
@@ -209,9 +209,9 @@ body {
     0 2px 10px
     rgba(0, 0, 0, 0.20);
 
-  z-index: 100;
+  z-index: 100; /*Z方向（奥・手前）の指定。キーコントローラーを他の要素より前面に出す*/
 
-  line-height: normal;
+  line-height: normal; /*文字のための行間を元に戻す（親要素の #imageArea で0に指定したため）
 
 }
 
@@ -231,15 +231,15 @@ body {
 
   border: none;
 
-  border-radius: 50%;
+  border-radius: 50%; /* 円形にする */
 
   background: #eeeeee;
 
   font-size: 28px;
 
-  cursor: pointer;
+  cursor: pointer; /* マウスカーソルを指カーソルにする */
 
-  touch-action: manipulation;
+  touch-action: manipulation; /*ダブルタップなどに関連する標準ジェスチャーを抑制*/
 
 }
 
@@ -265,16 +265,16 @@ body {
   font-size: 28px;
   font-weight: bold;
 
-  cursor: pointer;
+  cursor: pointer; /* マウスカーソルを指カーソルにする */
 
-  touch-action: manipulation;
+  touch-action: manipulation; /*ダブルタップなどに関連する標準ジェスチャーを抑制*/
 
 }
 
 
 
 /* =====================================
-   ボタンを押したとき
+   ボタンを押したとき(アニメーションの定義)
    ===================================== */
 
 #keyDown:active,
@@ -282,7 +282,7 @@ body {
 #keyDisplay:active {
 
   transform:
-    scale(0.94);
+    scale(0.94); /*ボタンを押したときに少し縮む*/
 
 }
 
@@ -292,7 +292,7 @@ body {
    スマホ向け
    ===================================== */
 
-@media
+@media /*メディアクエリ 条件を満たしたときのみ適用する 通常版CSSの一部を小さい値で上書きする*/
 (max-width: 600px) {
 
   #keyControl {
@@ -338,12 +338,13 @@ body {
    スマホ・タブレットの横向き表示
    ===================================== */
 
-@media
+@media /*メディアクエリ 条件を満たしたときのみ適用する*/
   (orientation: landscape) and
-  (pointer: coarse) {
+  (pointer: coarse) { /*coarse はスマホ等のタッチ操作を意味する（マウスのような点ではなく、指のような面の入力）*/
 
   #imageArea {
     transform: translateY(-3dvh);
   }
 
+  }
 }
