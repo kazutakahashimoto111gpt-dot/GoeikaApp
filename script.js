@@ -4,7 +4,7 @@
 
 const image =
   document.getElementById(
-    "onpuImage"
+    "noteImage"
   );
 
 
