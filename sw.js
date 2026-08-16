@@ -1,8 +1,9 @@
 // ====================================================
 // キャッシュの名前
 //
-// 大きな仕様変更や、キャッシュを一式更新したいときに
-// バージョンを変更する
+// 大きな仕様変更や、キャッシュを一式更新したいときにバージョンを変更する
+// CACHE_NAMEを変えなくても、sw.jsの他の部分に変更点があれば、ブラウザは自動的に新しいService Workerとしてインストールする
+// したがって、CACHE_NAMEを変えるのは、キャッシュの中身を一式更新したいときだけでよい
 // ====================================================
 
 const CACHE_NAME = "v1.0.3";
@@ -28,9 +29,10 @@ const FILES_TO_CACHE = [
 ];
 
 
-// ========================================
+// ==========================================================================================================
 // ① Service Worker のインストール
-// ========================================
+// 　ブラウザは sw.js の内容を以前のものと比較して、変更点があれば新しいService Workerとして自動的にインストールする
+// ==========================================================================================================
 
 self.addEventListener("install", event => {
 
@@ -127,11 +129,20 @@ self.addEventListener("fetch", event => {
               if (
                 networkResponse &&
                 networkResponse.status === 200 &&
-                event.request.url.startsWith(self.location.origin)
+                event.request.url.startsWith(self.location.origin) /*リクエスト先URLが、sw.js が配信されているオリジンか？*/
               ) {
 
                 const responseClone =
                   networkResponse.clone();
+                  /*networkResponse を複製して、もう一つ同じレスポンスを作る
+                  　Response の中身（body）は基本的に一度しか読み取れないため。
+                  　ここでは以下のような用途になる。
+                  
+                  　networkResponse
+                          │
+                          ├── clone() → キャッシュ保存用
+                          │
+                          └─────────→ ブラウザに返す用*/
 
 
                 caches.open(CACHE_NAME)

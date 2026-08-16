@@ -1,5 +1,5 @@
 // =====================================
-// HTML要素
+// HTML要素をjsのオブジェクトとして取得
 // =====================================
 
 const image =
@@ -79,8 +79,8 @@ const keyControlPosition = {
 
 function updateKeyControlPosition() {
 
-  const rect =
-    image.getBoundingClientRect();
+  const rect = 
+    image.getBoundingClientRect(); 
 
 
   /*
@@ -109,9 +109,9 @@ function updateKeyControlPosition() {
 
 
 
-// =====================================
-// 画像読み込み時に位置設定
-// =====================================
+// =========================================
+// 画像読み込み時にキーコントローラーの位置設定
+// =========================================
 
 image.addEventListener(
   "load",
@@ -120,9 +120,9 @@ image.addEventListener(
 
 
 
-// =====================================
-// 画面サイズ変更時にも再計算
-// =====================================
+// ====================================================
+// 画面サイズ変更時にもキーコントローラーの位置設定を再計算
+// ====================================================
 
 window.addEventListener(
   "resize",
@@ -131,9 +131,9 @@ window.addEventListener(
 
 
 
-// =====================================
-// 画像がキャッシュ済みの場合
-// =====================================
+// =============================================================
+// 画像がキャッシュ済みの場合にもキーコントローラーの位置設定を再計算
+// =============================================================
 
 if (
   image.complete
@@ -151,14 +151,14 @@ if (
 
 let keyShift =
   Number(
-    localStorage.getItem(
+    localStorage.getItem( /*"kongoKeyShift"というキー名で保存された文字列を数値に変換して取得*/
       "kongoKeyShift"
     )
   );
 
 
 if (
-  Number.isNaN(keyShift)
+  Number.isNaN(keyShift) /* NaNの場合は0にする */
 ) {
 
   keyShift = 0;
@@ -233,7 +233,7 @@ keyDown.addEventListener(
 
   function(event) {
 
-    event.stopPropagation();
+    event.stopPropagation(); /*このキー操作はここだけのイベントとして扱い、親要素には処理させない*/
 
 
     if (
@@ -266,7 +266,7 @@ keyUp.addEventListener(
 
   function(event) {
 
-    event.stopPropagation();
+    event.stopPropagation(); /*このキー操作はここだけのイベントとして扱い、親要素には処理させない*/
 
 
     if (
@@ -301,7 +301,7 @@ keyDisplay.addEventListener(
 
   function(event) {
 
-    event.stopPropagation();
+    event.stopPropagation(); /*このキー操作はここだけのイベントとして扱い、親要素には処理させない*/
 
 
     keyShift = 0;
@@ -320,13 +320,15 @@ updateKeyDisplay();
 
 
 
-// =====================================
-// AudioContext
-// =====================================
+// ============================================
+// AudioContext(実際に音を扱うオブジェクト)を作成
+// ============================================
 
 const AudioContextClass =
   window.AudioContext ||
   window.webkitAudioContext;
+  /*AudioContext が使えるならそれを使う。なければ webkitAudioContext を使う。
+  SafariはwebkitAudioContextしか使えないので、両方を定義しておく必要がある。*/  
 
 
 const audioContext =
@@ -352,28 +354,33 @@ function playSound(
   // 全体音量
   // ---------------------------------
 
+  // 音量を調整するためのオブジェクトを作成
   const masterGain =
     audioContext.createGain();
 
-
+  // 音量調整した音を
+  // 最終的な出力先（スピーカー）につなぐ
   masterGain.connect(
     audioContext.destination
   );
 
-
+  // 音が鳴り始める瞬間の音量を
+  // ほぼ0に設定
   masterGain.gain.setValueAtTime(
     0.0001,
     now
   );
 
-
+  // 0.01秒かけて
+  // 音量を0.6まで一気に上げる
   masterGain.gain
     .exponentialRampToValueAtTime(
       0.6,
       now + 0.01
     );
 
-
+  // その後、1.8秒後までに
+  // 音量をほぼ0まで徐々に下げる
   masterGain.gain
     .exponentialRampToValueAtTime(
       0.0001,
@@ -382,228 +389,344 @@ function playSound(
 
 
 
-  // ---------------------------------
-  // 基音
-  // ---------------------------------
-
-  const osc1 =
-    audioContext.createOscillator();
+// ---------------------------------
+// 基音
+// ---------------------------------
 
 
-  const gain1 =
-    audioContext.createGain();
+// 基本となる音を作る
+// オシレーター（音の発生器）を作成
+const osc1 =
+  audioContext.createOscillator();
 
 
-  osc1.type =
-    "sine";
+// 基音専用の
+// 音量調整器を作成
+const gain1 =
+  audioContext.createGain();
 
 
-  osc1.frequency.value =
-    frequency;
+// 音の波形を
+// サイン波に設定
+osc1.type =
+  "sine";
 
 
-  gain1.gain.value =
-    1.0;
+// 基音の周波数を設定
+osc1.frequency.value =
+  frequency;
 
 
-  osc1.connect(
-    gain1
+// 基音の音量を1.0に設定
+gain1.gain.value =
+  1.0;
+
+
+// 基音
+// ↓
+// 基音専用の音量調整器
+// の順につなぐ
+osc1.connect(
+  gain1
+);
+
+
+// 基音専用の音量調整器を
+// 全体音量（masterGain）につなぐ
+gain1.connect(
+  masterGain
+);
+
+
+
+
+// ---------------------------------
+// 2倍音
+// ---------------------------------
+
+
+// 2倍音を作る
+// オシレーターを作成
+const osc2 =
+  audioContext.createOscillator();
+
+
+// 2倍音専用の
+// 音量調整器を作成
+const gain2 =
+  audioContext.createGain();
+
+
+// 音の波形を
+// サイン波に設定
+osc2.type =
+  "sine";
+
+
+// 基音の2倍の周波数に設定
+osc2.frequency.value =
+  frequency * 2;
+
+
+// 2倍音の音量を
+// 基音より小さい0.35に設定
+gain2.gain.value =
+  0.35;
+
+
+// 2倍音
+// ↓
+// 2倍音専用の音量調整器
+// の順につなぐ
+osc2.connect(
+  gain2
+);
+
+
+// 2倍音専用の音量調整器を
+// 全体音量（masterGain）につなぐ
+gain2.connect(
+  masterGain
+);
+
+
+
+
+// ---------------------------------
+// 3倍音
+// ---------------------------------
+
+
+// 3倍音を作る
+// オシレーターを作成
+const osc3 =
+  audioContext.createOscillator();
+
+
+// 3倍音専用の
+// 音量調整器を作成
+const gain3 =
+  audioContext.createGain();
+
+
+// 音の波形を
+// サイン波に設定
+osc3.type =
+  "sine";
+
+
+// 基音の3倍の周波数に設定
+osc3.frequency.value =
+  frequency * 3;
+
+
+// 3倍音の音量を
+// さらに小さい0.15に設定
+gain3.gain.value =
+  0.15;
+
+
+// 3倍音
+// ↓
+// 3倍音専用の音量調整器
+// の順につなぐ
+osc3.connect(
+  gain3
+);
+
+
+// 3倍音専用の音量調整器を
+// 全体音量（masterGain）につなぐ
+gain3.connect(
+  masterGain
+);
+
+
+
+
+// ---------------------------------
+// 弦を弾いた瞬間の音
+// ---------------------------------
+
+
+// 弦を弾いた瞬間の
+// 短い音を作るオシレーターを作成
+const clickOsc =
+  audioContext.createOscillator();
+
+
+// 弦を弾いた瞬間の音専用の
+// 音量調整器を作成
+const clickGain =
+  audioContext.createGain();
+
+
+// 波形を三角波に設定
+// 基音とは少し違う音質を作る
+clickOsc.type =
+  "triangle";
+
+
+// 基音の4倍の周波数に設定
+// 高い成分を加えて
+// 弦を弾いた瞬間らしさを出す
+clickOsc.frequency.value =
+  frequency * 4;
+
+
+// 鳴り始めの音量を
+// 0.18に設定
+clickGain.gain.setValueAtTime(
+  0.18,
+  now
+);
+
+
+// 0.08秒で音量をほぼ0まで下げる
+// 一瞬だけ鳴る「弾いた音」を作る
+clickGain.gain
+  .exponentialRampToValueAtTime(
+    0.0001,
+    now + 0.08
   );
 
 
-  gain1.connect(
-    masterGain
-  );
+// 弦を弾いた瞬間の音
+// ↓
+// 専用の音量調整器
+// の順につなぐ
+clickOsc.connect(
+  clickGain
+);
 
 
+// 専用の音量調整器を
+// 全体音量（masterGain）につなぐ
+clickGain.connect(
+  masterGain
+);
 
-  // ---------------------------------
-  // 2倍音
-  // ---------------------------------
 
-  const osc2 =
-    audioContext.createOscillator();
 
+// ---------------------------------
+// 再生開始
+// ---------------------------------
 
-  const gain2 =
-    audioContext.createGain();
 
+// 基音の再生を
+// 現在時刻（now）から開始
+osc1.start(now);
 
-  osc2.type =
-    "sine";
 
+// 2倍音の再生を
+// 現在時刻（now）から開始
+osc2.start(now);
 
-  osc2.frequency.value =
-    frequency * 2;
 
+// 3倍音の再生を
+// 現在時刻（now）から開始
+osc3.start(now);
 
-  gain2.gain.value =
-    0.35;
 
+// 弦を弾いた瞬間の音を
+// 現在時刻（now）から開始
+clickOsc.start(now);
 
-  osc2.connect(
-    gain2
-  );
 
 
-  gain2.connect(
-    masterGain
-  );
 
+// ---------------------------------
+// 再生終了
+// ---------------------------------
 
 
-  // ---------------------------------
-  // 3倍音
-  // ---------------------------------
+// 基音を
+// 1.8秒後に停止
+osc1.stop(
+  now + 1.8
+);
 
-  const osc3 =
-    audioContext.createOscillator();
 
+// 2倍音を
+// 1.8秒後に停止
+osc2.stop(
+  now + 1.8
+);
 
-  const gain3 =
-    audioContext.createGain();
 
+// 3倍音を
+// 1.8秒後に停止
+osc3.stop(
+  now + 1.8
+);
 
-  osc3.type =
-    "sine";
 
+// 弦を弾いた瞬間の音は
+// 短い音なので0.1秒後に停止
+clickOsc.stop(
+  now + 0.1
+);
 
-  osc3.frequency.value =
-    frequency * 3;
-
-
-  gain3.gain.value =
-    0.15;
-
-
-  osc3.connect(
-    gain3
-  );
-
-
-  gain3.connect(
-    masterGain
-  );
-
-
-
-  // ---------------------------------
-  // 弦を弾いた瞬間
-  // ---------------------------------
-
-  const clickOsc =
-    audioContext.createOscillator();
-
-
-  const clickGain =
-    audioContext.createGain();
-
-
-  clickOsc.type =
-    "triangle";
-
-
-  clickOsc.frequency.value =
-    frequency * 4;
-
-
-  clickGain.gain.setValueAtTime(
-    0.18,
-    now
-  );
-
-
-  clickGain.gain
-    .exponentialRampToValueAtTime(
-      0.0001,
-      now + 0.08
-    );
-
-
-  clickOsc.connect(
-    clickGain
-  );
-
-
-  clickGain.connect(
-    masterGain
-  );
-
-
-
-  // ---------------------------------
-  // 再生開始
-  // ---------------------------------
-
-  osc1.start(now);
-
-  osc2.start(now);
-
-  osc3.start(now);
-
-  clickOsc.start(now);
-
-
-
-  // ---------------------------------
-  // 再生終了
-  // ---------------------------------
-
-  osc1.stop(
-    now + 1.8
-  );
-
-
-  osc2.stop(
-    now + 1.8
-  );
-
-
-  osc3.stop(
-    now + 1.8
-  );
-
-
-  clickOsc.stop(
-    now + 0.1
-  );
 
 }
-
 
 
 // =====================================
 // タップ位置を光らせる
 // =====================================
 
+// タップした位置に
+// flashMarkerを移動させて
+// 点滅アニメーションを実行する
 function flash(
   x,
   y
 ) {
 
 
+  // flashMarkerの横位置を
+  // タップしたX座標に設定
   flashMarker.style.left =
     x + "px";
 
 
+  // flashMarkerの縦位置を
+  // タップしたY座標に設定
   flashMarker.style.top =
     y + "px";
 
 
+  // いったんflashクラスを削除する
+  //
+  // 前回のアニメーション状態を解除して
+  // 再びアニメーションできるようにする
   flashMarker.classList.remove(
     "flash"
   );
 
 
   /*
-    ブラウザに一度反映させることで
-    連続タップでも
-    アニメーションを再生できる
+    offsetWidthを読み取ることで
+    ブラウザに現在の状態を一度反映させる
+
+    これにより
+
+    flashクラスを削除
+        ↓
+    ブラウザに反映
+        ↓
+    flashクラスを再追加
+
+    という流れになり、
+    連続タップでもアニメーションを
+    最初から再生できる
   */
 
   void flashMarker.offsetWidth;
 
 
+  // flashクラスを再び追加して
+  // 点滅アニメーションを開始する
   flashMarker.classList.add(
     "flash"
   );
@@ -613,11 +736,16 @@ function flash(
 
 
 // =====================================
-// 画像クリック
+// 画像タップ時の処理
 // =====================================
 
+/*【処理の流れ】
+タップ → 画像上の座標を求める → 比率座標に変換 → 全音符との距離を比較 → 最も近い音符を特定 → 
+判定半径内ならキー変更を加えて鳴らす → タップ位置を光らせる */
+
+
 image.addEventListener(
-  "pointerdown",
+  "pointerdown", // pointerdownはマウス・タッチ・ペンなどを共通して扱えるイベント
 
   async function(event) {
 
@@ -626,6 +754,12 @@ image.addEventListener(
     // iPhone等のAudioContext対策
     // ---------------------------------
 
+    // iPhoneなどでは
+    // AudioContextが停止状態になっていることがある
+    //
+    // suspendedなら
+    // ユーザーのタップをきっかけに再開する
+    
     if (
       audioContext.state ===
       "suspended"
@@ -638,23 +772,38 @@ image.addEventListener(
 
 
     // ---------------------------------
-    // 現在表示中の画像位置
+    // 現在表示中の画像位置・サイズ
     // ---------------------------------
 
+    // 画像が現在画面上の
+    // どこに、どの大きさで表示されているかを取得する
+    //
+    // rect.left   → 画像左端の位置
+    // rect.top    → 画像上端の位置
+    // rect.width  → 画像の表示幅
+    // rect.height → 画像の表示高さ
     const rect =
       image.getBoundingClientRect();
 
 
 
     // ---------------------------------
-    // 表示画像上のクリック座標
+    // 表示画像上のタップ座標
     // ---------------------------------
 
+    // event.clientXは
+    // 画面左端を基準としたタップ位置
+    //
+    // そこから画像左端の位置を引くことで
+    // 「画像左端から何pxの場所をタップしたか」
+    // を求める
     const displayX =
       event.clientX -
       rect.left;
 
 
+    // Y座標も同様に
+    // 画像上端から何pxの場所をタップしたかを求める
     const displayY =
       event.clientY -
       rect.top;
@@ -662,14 +811,25 @@ image.addEventListener(
 
 
     // ---------------------------------
-    // 0～1の比率座標
+    // 0～1の比率座標に変換
     // ---------------------------------
 
+    // X座標を画像の幅で割り
+    // 0～1の比率に変換する
+    //
+    // 0   → 画像の左端
+    // 0.5 → 画像の中央
+    // 1   → 画像の右端
     const clickX =
       displayX /
       rect.width;
 
 
+    // Y座標も同様に比率へ変換する
+    //
+    // 0   → 画像の上端
+    // 0.5 → 画像の中央
+    // 1   → 画像の下端
     const clickY =
       displayY /
       rect.height;
@@ -677,34 +837,55 @@ image.addEventListener(
 
 
     // ---------------------------------
-    // 一番近い音符
+    // 一番近い音符を探す準備
     // ---------------------------------
 
+    // 現時点では
+    // 一番近い音符はまだ見つかっていないのでnull
     let nearestNote =
       null;
 
 
+    // 一番近い音符までの距離
+    //
+    // 最初は比較対象がないので
+    // Infinity（無限大）にしておく
     let nearestDistance =
       Infinity;
 
 
 
+    // ---------------------------------
+    // すべての音符との距離を調べる
+    // ---------------------------------
+
+    // notesに登録されている音符を
+    // ひとつずつ取り出して調べる
     for (
       const note
       of notes
     ) {
 
 
+      // タップ位置と音符位置の
+      // X方向の差を求める
       const dx =
         clickX -
         note.xRatio;
 
 
+      // タップ位置と音符位置の
+      // Y方向の差を求める
       const dy =
         clickY -
         note.yRatio;
 
 
+      // 三平方の定理を使って
+      // タップ位置から音符までの
+      // 直線距離を求める
+      //
+      // 距離 = √(横の差² + 縦の差²)
       const distance =
         Math.sqrt(
           dx * dx +
@@ -712,15 +893,20 @@ image.addEventListener(
         );
 
 
+      // 今まで見つけた音符より
+      // 今回の音符のほうが近ければ更新する
       if (
         distance <
         nearestDistance
       ) {
 
+        // 最短距離を更新
         nearestDistance =
           distance;
 
 
+        // 一番近い音符を
+        // 今回の音符に更新
         nearestNote =
           note;
 
@@ -731,9 +917,13 @@ image.addEventListener(
 
 
     // ---------------------------------
-    // 音符範囲内なら鳴らす
+    // 音符の範囲内なら音を鳴らす
     // ---------------------------------
 
+    // 一番近い音符が存在し、
+    // さらにその距離が
+    // hitRadius（タップ判定半径）以内なら
+    // その音符がタップされたと判断する
     if (
       nearestNote &&
       nearestDistance <=
@@ -741,8 +931,16 @@ image.addEventListener(
     ) {
 
 
-      // キー変更を反映
+      // ---------------------------------
+      // キー変更を音程に反映
+      // ---------------------------------
 
+      // 元の音符の周波数に
+      // keyShiftによる半音単位の変化を加える
+      //
+      // 12半音上 → 周波数2倍
+      // 12半音下 → 周波数1/2
+      // 1半音上  → 2^(1/12)倍
       const shiftedFrequency =
 
         nearestNote.frequency *
@@ -754,12 +952,24 @@ image.addEventListener(
 
 
 
+      // ---------------------------------
+      // 音を再生
+      // ---------------------------------
+
+      // キー変更後の周波数を
+      // playSoundへ渡して音を鳴らす
       playSound(
         shiftedFrequency
       );
 
 
 
+      // ---------------------------------
+      // タップ位置を光らせる
+      // ---------------------------------
+
+      // 実際にタップした画像上の座標を渡して
+      // flashMarkerを表示する
       flash(
         displayX,
         displayY
