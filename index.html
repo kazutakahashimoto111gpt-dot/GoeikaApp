@@ -8,38 +8,75 @@
 
   <title>音符アプリ</title>
 
-  <!-- htmlの設定 -->
-    <link rel="stylesheet" href="style.css">
-    <link rel="icon" type="image/png" href="./icons/favicon-48.png"> <!-- webサイトのアイコン（favicon） -->
-    <meta name="theme-color" content="#ffffff"> <!--webサイトのテーマカラー-->
 
-  <!-- webサイトではなくPWAとしての起動するための設定 -->
-    <link rel="manifest" href="manifest.json"> <!-- PWA標準の設定ファイル（主にandroid） -->
-    <meta name="apple-mobile-web-app-title" content="音符"> <!-- iOS専用 設定タグ アイコン下に表示される文字列 -->
-    <meta name="apple-mobile-web-app-capable" content="yes"> <!-- 設定タグ iPhone / Safari向け -->
-    <meta name="mobile-web-app-capable" content="yes"> <!-- 設定タグ 一般的なPWA向け -->
+  <!-- =====================================
+       HTMLの設定
+       ===================================== -->
 
-    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png"> <!-- iOS専用 設定タグ アイコン設定 -->
+  <link
+    rel="stylesheet"
+    href="style.css"
+  >
+
+  <!-- Webサイトのアイコン -->
+  <link
+    rel="icon"
+    type="image/png"
+    href="./icons/favicon-48.png"
+  >
+
+  <!-- Webサイトのテーマカラー -->
+  <meta
+    name="theme-color"
+    content="#ffffff"
+  >
+
+
+
+  <!-- =====================================
+       PWAとして起動するための設定
+       ===================================== -->
+
+  <!-- PWA標準の設定ファイル -->
+  <link
+    rel="manifest"
+    href="manifest.json"
+  >
+
+  <!-- iPhoneのホーム画面で
+       アイコン下に表示される名前 -->
+  <meta
+    name="apple-mobile-web-app-title"
+    content="音符"
+  >
+
+  <!-- iPhone / Safari向け -->
+  <meta
+    name="apple-mobile-web-app-capable"
+    content="yes"
+  >
+
+  <!-- 一般的なPWA向け -->
+  <meta
+    name="mobile-web-app-capable"
+    content="yes"
+  >
+
+  <!-- iPhone用PWAアイコン -->
+  <link
+    rel="apple-touch-icon"
+    href="icons/apple-touch-icon.png"
+  >
 
 </head>
 
-<!-- sw.js をserviceWorkerとして登録する（ここで登録された sw.js が serviceWorker をインストールする） -->
-<script>
-  if ("serviceWorker" in navigator) {
-
-    navigator.serviceWorker.register("./sw.js")
-      .then(() => {
-        console.log("Service Workerを登録しました");
-      })
-      .catch(error => {
-        console.error("Service Workerの登録に失敗しました:", error);
-      });
-
-  }
-</script>
 
 <body>
 
+
+  <!-- =====================================
+       音符画像エリア
+       ===================================== -->
 
   <div id="imageArea">
 
@@ -51,17 +88,21 @@
     >
 
 
-    <!-- タップ位置の光 -->
+
+    <!-- =====================================
+         タップ位置の光
+         ===================================== -->
 
     <div id="flashMarker"></div>
 
 
-    <!--
-      キー変更オブジェクト
 
-      画像の上に重ねるため、
-      imageArea の中に入れてある
-    -->
+    <!-- =====================================
+         キー変更コントローラー
+
+         画像の上に重ねるため
+         imageAreaの中に入れてある
+         ===================================== -->
 
     <div id="keyControl">
 
@@ -91,20 +132,275 @@
 
     </div>
 
+
   </div>
 
 
+
+  <!-- =====================================
+       アップデート通知
+       
+       普段はCSSで非表示にしておく。
+
+       新しいService Workerの準備が
+       完了したときだけJavaScriptから
+       表示する。
+       ===================================== -->
+
+  <div id="updateNotice">
+
+    <strong>
+      更新があります
+    </strong>
+
+    <br>
+
+    アプリを開き直してください
+
+  </div>
+
+
+
+  <!-- =====================================
+       JavaScript
+       ===================================== -->
+
+
   <!--
-    notes.js を先に読む
+    notes.jsを先に読む。
+
+    script.jsではnotesに登録された
+    音符データを使用するため。
   -->
 
   <script src="notes.js"></script>
 
-  <!--
-    アプリ本体
-  -->
+
+  <!-- アプリ本体 -->
 
   <script src="script.js"></script>
+
+
+
+  <!-- =====================================
+       Service Worker
+       ===================================== -->
+
+  <script>
+
+
+    // -------------------------------------
+    // Service Worker対応ブラウザか確認
+    // -------------------------------------
+
+    if (
+      "serviceWorker" in navigator
+    ) {
+
+
+      /*
+        sw.jsをService Workerとして登録する。
+
+        register()が成功すると、
+
+        registration
+
+        というService Workerを管理するための
+        オブジェクトを受け取ることができる。
+      */
+
+      navigator.serviceWorker
+        .register("./sw.js")
+
+        .then(registration => {
+
+
+          console.log(
+            "Service Workerを登録しました"
+          );
+
+
+
+          // =================================
+          // 更新通知を表示する関数
+          // =================================
+
+          function showUpdateNotice() {
+
+
+            const updateNotice =
+              document.getElementById(
+                "updateNotice"
+              );
+
+
+            /*
+              更新通知を表示する。
+
+              普段はCSSによって
+
+              display: none;
+
+              になっている。
+            */
+
+            updateNotice.style.display =
+              "block";
+
+          }
+
+
+
+          // =================================
+          // すでに新版がwaitingの場合
+          // =================================
+
+          /*
+            ページを開いた時点ですでに
+
+            新しいService Workerが
+            waiting状態になっている
+
+            こともある。
+
+            その場合はすぐ通知する。
+          */
+
+          if (
+            registration.waiting
+          ) {
+
+            showUpdateNotice();
+
+          }
+
+
+
+          // =================================
+          // 新しいService Workerを検出
+          // =================================
+
+          registration.addEventListener(
+            "updatefound",
+
+            function() {
+
+
+              /*
+                installingには、
+
+                現在インストール中の
+                新しいService Workerが入る。
+              */
+
+              const newWorker =
+                registration.installing;
+
+
+              if (
+                !newWorker
+              ) {
+
+                return;
+
+              }
+
+
+
+              // -----------------------------
+              // 新SWの状態変化を監視
+              // -----------------------------
+
+              newWorker.addEventListener(
+                "statechange",
+
+                function() {
+
+
+                  /*
+                    installed
+
+                    になった時点で、
+
+                    新しいService Workerの
+                    インストールが完了している。
+
+
+                    ただし、
+
+                    初めてこのPWAを使ったときも
+                    installedになる。
+
+
+                    そこで、
+
+                    navigator.serviceWorker.controller
+
+                    が存在するか確認する。
+
+
+                    controllerが存在する
+                         ↓
+                    すでに旧SWで動いている
+                         ↓
+                    今回installedになったものは
+                    「更新版」と判断できる
+                  */
+
+                  if (
+                    newWorker.state ===
+                      "installed" &&
+
+                    navigator.serviceWorker.controller
+                  ) {
+
+
+                    /*
+                      新SWはこのあと
+                      waiting状態になる。
+
+                      こちらから
+                      skipWaiting()などは行わない。
+
+                      ブラウザ標準の更新処理に任せる。
+                    */
+
+                    showUpdateNotice();
+
+                  }
+
+
+                }
+              );
+
+
+            }
+          );
+
+
+        })
+
+
+        // -------------------------------------
+        // Service Worker登録失敗
+        // -------------------------------------
+
+        .catch(error => {
+
+
+          console.error(
+            "Service Workerの登録に失敗しました:",
+            error
+          );
+
+
+        });
+
+
+    }
+
+
+  </script>
 
 
 </body>

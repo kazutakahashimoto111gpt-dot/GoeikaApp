@@ -202,7 +202,6 @@ keyShift =
 // キー倍率
 // =====================================
 
-
 let keyMultiplier =
   Math.pow(
     2,
@@ -348,6 +347,7 @@ keyUp.addEventListener(
 
 
     // キー変更時だけ倍率を再計算
+
     updateKeyMultiplier();
 
 
@@ -378,6 +378,7 @@ keyDisplay.addEventListener(
 
 
     // キー0用の倍率へ更新
+
     updateKeyMultiplier();
 
 
@@ -391,6 +392,7 @@ keyDisplay.addEventListener(
 
 
 // 最初のキー表示を更新
+
 updateKeyDisplay();
 
 
@@ -452,44 +454,219 @@ let audioContext =
 
 
 // ============================================
+// AudioContext再作成フラグ
+// ============================================
+
+let audioContextNeedsReset =
+  false;
+
+
+/*
+  この変数は、
+
+  「次に音符をタップしたときに
+   AudioContextを作り直す必要があるか」
+
+  を記憶するためのもの。
+
+
+  false
+    ↓
+  作り直す必要なし
+
+
+  true
+    ↓
+  次のタップ時に作り直す
+
+
+  という意味。
+*/
+
+
+
+// ============================================
+// アプリがバックグラウンドへ移動したことを検出
+// ============================================
+
+document.addEventListener(
+  "visibilitychange",
+
+  function() {
+
+
+    /*
+      visibilityStateが
+
+      hidden
+
+      になった場合、
+
+      このページが画面から見えなくなった
+      ということ。
+
+
+      たとえば、
+
+      ・ホーム画面へ戻った
+      ・別のアプリへ切り替えた
+      ・ブラウザの別タブへ移動した
+
+      など。
+    */
+
+    if (
+      document.visibilityState ===
+      "hidden"
+    ) {
+
+
+      /*
+        iPhoneなどでは、
+
+        バックグラウンドへ移動したあと
+        AudioContextが正常に復帰しないことがある。
+
+
+        しかも場合によっては
+
+        audioContext.state
+
+        が
+
+        "running"
+
+        になっていても、
+        実際には音が出ない可能性がある。
+
+
+        そこで、
+
+        「バックグラウンドへ行った」
+
+        という事実そのものを記録しておく。
+      */
+
+      audioContextNeedsReset =
+        true;
+
+    }
+
+
+  }
+);
+
+
+
+// ============================================
 // AudioContextを使用可能な状態にする
 // ============================================
 
 async function ensureAudioContext() {
 
-  /*
-    AudioContextには主に
-
-    running
-      正常に動いている
-
-    suspended
-      一時停止している
-
-    closed
-      完全に終了している
-
-    という状態がある。
-  */
-
 
   // ------------------------------------------
-  // 正常なら何もしない
+  // バックグラウンドから復帰した場合
   // ------------------------------------------
 
   if (
-    audioContext.state ===
-    "running"
+    audioContextNeedsReset
   ) {
 
-    return;
+
+    /*
+      古いAudioContextをそのまま信用せず、
+
+      次のユーザー操作（音符タップ）のときに
+      新しいAudioContextへ交換する。
+
+
+      AudioContextの再作成を
+      pointerdownの中から行うため、
+
+      iPhoneが要求する
+
+      「ユーザー操作をきっかけに音声を開始する」
+
+      という条件にも合わせやすい。
+    */
+
+
+    // ----------------------------------------
+    // 古いAudioContextを終了させる
+    // ----------------------------------------
+
+    try {
+
+
+      /*
+        まだclosedでなければ
+        close()を試す。
+      */
+
+      if (
+        audioContext.state !==
+        "closed"
+      ) {
+
+        await audioContext.close();
+
+      }
+
+
+    }
+    catch (error) {
+
+
+      /*
+        iPhoneなどでclose()が
+        何らかの理由で失敗しても、
+
+        アプリ全体を停止させない。
+
+
+        今回の目的は
+
+        「古いAudioContextを捨てて
+         新しいものを使う」
+
+        ことなので、
+
+        close()の失敗そのものは
+        致命的ではない。
+      */
+
+      console.warn(
+        "AudioContextを終了できませんでした。",
+        error
+      );
+
+    }
+
+
+
+    // ----------------------------------------
+    // 新しいAudioContextを作成
+    // ----------------------------------------
+
+    audioContext =
+      new AudioContextClass();
+
+
+
+    // ----------------------------------------
+    // 再作成フラグを解除
+    // ----------------------------------------
+
+    audioContextNeedsReset =
+      false;
 
   }
 
 
 
   // ------------------------------------------
-  // 完全に終了していた場合
+  // closedだった場合
   // ------------------------------------------
 
   if (
@@ -497,11 +674,12 @@ async function ensureAudioContext() {
     "closed"
   ) {
 
+
     /*
       closedになったAudioContextは
       resume()では復活できない。
 
-      そのため新しいAudioContextを作る。
+      そのため新しいものを作る。
     */
 
     audioContext =
@@ -512,7 +690,7 @@ async function ensureAudioContext() {
 
 
   // ------------------------------------------
-  // 一時停止していた場合
+  // suspendedだった場合
   // ------------------------------------------
 
   if (
@@ -520,17 +698,17 @@ async function ensureAudioContext() {
     "suspended"
   ) {
 
+
     /*
-      iPhoneなどでは
-      アプリを開き直したときや
-      バックグラウンドから戻ったときに
+      AudioContextが一時停止状態なら
+      resume()で再開する。
 
-      suspended
 
-      になることがある。
+      この関数は音符をタップした
+      pointerdownから呼ばれるので、
 
-      ユーザーのタップをきっかけに
-      resume()して復帰させる。
+      ユーザー操作をきっかけに
+      resume()することになる。
     */
 
     await audioContext.resume();
@@ -976,9 +1154,11 @@ function flash(
       ↓
   AudioContext確認
       ↓
+  必要ならAudioContextを再作成
+      ↓
   座標取得
       ↓
-  一番近い音符を探す（平方根計算をしない）
+  一番近い音符を探す
       ↓
   音を鳴らす
       ↓
@@ -996,21 +1176,30 @@ image.addEventListener(
     // ---------------------------------
 
     /*
-      正常なrunning状態なら
-      何もしない。
+      【重要】
 
-      suspendedやclosedの場合だけ
-      復帰処理を行う。
+      今回はstateがrunningの場合でも
+      ensureAudioContext()を呼ぶ。
+
+
+      なぜなら、
+
+      iPhoneなどでは
+      バックグラウンドから戻ったあと、
+
+      stateがrunningでも
+      実際には音が出ない可能性を
+     考慮するため。
+
+
+      ensureAudioContext()の中で
+
+      audioContextNeedsReset
+
+      も確認している。
     */
 
-    if (
-      audioContext.state !==
-      "running"
-    ) {
-
-      await ensureAudioContext();
-
-    }
+    await ensureAudioContext();
 
 
 
@@ -1082,12 +1271,14 @@ image.addEventListener(
 
 
       // X方向の差
+
       const dx =
         clickX -
         note.xRatio;
 
 
       // Y方向の差
+
       const dy =
         clickY -
         note.yRatio;
