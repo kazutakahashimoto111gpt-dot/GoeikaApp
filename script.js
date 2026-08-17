@@ -1144,26 +1144,367 @@ function flash(
 
 
 // =====================================
-// 画像タップ時の処理
+// スライド演奏開始
 // =====================================
 
 /*
-  【現在の処理の流れ】
+  【新しく追加した機能】
 
-  pointerdown
-      ↓
-  AudioContext確認
-      ↓
-  必要ならAudioContextを再作成
-      ↓
-  座標取得
-      ↓
-  一番近い音符を探す
-      ↓
-  音を鳴らす
-      ↓
-  光らせる
+  指やマウスを押したまま
+  音符の上を移動すると、
+
+  音符が切り替わった瞬間に
+  次の音を鳴らす。
+
+
+  たとえば、
+
+  音符13
+    ↓
+  音符14
+    ↓
+  音符15
+
+  と指を滑らせると、
+
+  13 → 14 → 15
+
+  と順番に音が鳴る。
+
+
+  同じ音符の上を動いているだけでは
+  何度も鳴らさない。
 */
+
+
+// =====================================
+// スライド演奏の状態
+// =====================================
+
+let isPointerPlaying =
+  false;
+
+
+/*
+  現在演奏に使っている
+  pointerのID。
+
+  スマホでは複数の指を
+  同時に画面へ置けるため、
+
+  最初に押した指だけを
+  演奏用として追跡する。
+*/
+
+let activePointerId =
+  null;
+
+
+/*
+  最後に鳴らした音符。
+
+  pointermoveは非常に細かく
+  何度も発生するため、
+
+  同じ音符を連打しないように
+  ここへ記憶しておく。
+*/
+
+let lastPlayedNote =
+  null;
+
+
+
+// =====================================
+// 指定位置の音符を探して鳴らす
+// =====================================
+
+function playNoteAtPointer(
+  event
+) {
+
+
+  // ---------------------------------
+  // 現在表示中の画像位置・サイズ
+  // ---------------------------------
+
+  const rect =
+    image.getBoundingClientRect();
+
+
+
+  // ---------------------------------
+  // 表示画像上の座標
+  // ---------------------------------
+
+  const displayX =
+    event.clientX -
+    rect.left;
+
+
+  const displayY =
+    event.clientY -
+    rect.top;
+
+
+
+  // ---------------------------------
+  // 0～1の比率座標に変換
+  // ---------------------------------
+
+  const pointerX =
+    displayX /
+    rect.width;
+
+
+  const pointerY =
+    displayY /
+    rect.height;
+
+
+
+  // ---------------------------------
+  // 一番近い音符を探す準備
+  // ---------------------------------
+
+  let nearestNote =
+    null;
+
+
+  /*
+    実際の距離ではなく
+    「距離の2乗」を保存する。
+
+    平方根を計算しなくてよいため、
+    pointermoveが何度も発生する
+    スライド演奏にも向いている。
+  */
+
+  let nearestDistanceSquared =
+    Infinity;
+
+
+
+  // ---------------------------------
+  // すべての音符との距離を調べる
+  // ---------------------------------
+
+  for (
+    const note
+    of notes
+  ) {
+
+
+    // X方向の差
+
+    const dx =
+      pointerX -
+      note.xRatio;
+
+
+    // Y方向の差
+
+    const dy =
+      pointerY -
+      note.yRatio;
+
+
+
+    /*
+      本来の距離は
+
+      √(dx² + dy²)
+
+      だが、
+
+      一番近い音符を探すだけなら
+      平方根は必要ない。
+
+      dx² + dy²
+
+      の大小関係だけで
+      同じ結果になる。
+    */
+
+    const distanceSquared =
+      dx * dx +
+      dy * dy;
+
+
+
+    /*
+      今まで見つけた音符より
+      今回の音符のほうが近ければ
+      更新する。
+    */
+
+    if (
+      distanceSquared <
+      nearestDistanceSquared
+    ) {
+
+      nearestDistanceSquared =
+        distanceSquared;
+
+
+      nearestNote =
+        note;
+
+    }
+
+  }
+
+
+
+  // ---------------------------------
+  // 音符の判定範囲外なら「音符なし」
+  // ---------------------------------
+
+  if (
+    !nearestNote ||
+    nearestDistanceSquared >
+    hitRadiusSquared
+  ) {
+
+
+    /*
+      いったん音符の範囲外へ
+      指が出た場合は、
+
+      「最後に鳴らした音符」
+
+      の記憶を解除する。
+
+
+      これによって、
+
+      音符13
+        ↓
+      音符のない場所
+        ↓
+      音符13
+
+      と戻った場合には、
+
+      同じ音符13でも
+      もう一度鳴らすことができる。
+    */
+
+    lastPlayedNote =
+      null;
+
+
+    return;
+
+  }
+
+
+
+  // ---------------------------------
+  // 同じ音符の中なら鳴らし直さない
+  // ---------------------------------
+
+  if (
+    nearestNote ===
+    lastPlayedNote
+  ) {
+
+
+    /*
+      pointermoveは、
+
+      指を少し動かしただけでも
+      何度も発生する。
+
+
+      そのたびに音を鳴らすと、
+
+      13
+      13
+      13
+      13
+      13...
+
+      のように同じ音が
+      激しく連打されてしまう。
+
+
+      そのため、
+
+      前回と同じ音符なら
+      何もしない。
+    */
+
+    return;
+
+  }
+
+
+
+  // ---------------------------------
+  // 今回の音符を記憶
+  // ---------------------------------
+
+  /*
+    音を鳴らす前に記憶しておく。
+
+    このあとpointermoveが
+    続けて発生しても、
+
+    同じ音符なら
+    上の判定で止められる。
+  */
+
+  lastPlayedNote =
+    nearestNote;
+
+
+
+  // ---------------------------------
+  // キー変更を音程に反映
+  // ---------------------------------
+
+  const shiftedFrequency =
+
+    nearestNote.frequency *
+    keyMultiplier;
+
+
+
+  // ---------------------------------
+  // 音を最優先で再生
+  // ---------------------------------
+
+  playSound(
+    shiftedFrequency
+  );
+
+
+
+  // ---------------------------------
+  // 現在位置を光らせる
+  // ---------------------------------
+
+  /*
+    タップ時だけでなく、
+
+    スライドして
+    新しい音符へ入ったときにも
+    光る。
+  */
+
+  flash(
+    displayX,
+    displayY
+  );
+
+}
+
+
+
+// =====================================
+// 押した瞬間
+// =====================================
 
 image.addEventListener(
   "pointerdown",
@@ -1176,27 +1517,21 @@ image.addEventListener(
     // ---------------------------------
 
     /*
-      【重要】
-
-      今回はstateがrunningの場合でも
-      ensureAudioContext()を呼ぶ。
-
-
-      なぜなら、
-
-      iPhoneなどでは
-      バックグラウンドから戻ったあと、
-
-      stateがrunningでも
-      実際には音が出ない可能性を
-     考慮するため。
+      iPhoneなどで
+      バックグラウンドから
+      復帰した場合も考慮する。
 
 
-      ensureAudioContext()の中で
+      pointerdownという
 
-      audioContextNeedsReset
+      「明確なユーザー操作」
 
-      も確認している。
+      の中でAudioContextを
+      使用可能な状態にする。
+
+
+      ここは従来の
+      iPhone対策をそのまま維持。
     */
 
     await ensureAudioContext();
@@ -1204,199 +1539,328 @@ image.addEventListener(
 
 
     // ---------------------------------
-    // 現在表示中の画像位置・サイズ
+    // スライド演奏開始
     // ---------------------------------
 
-    const rect =
-      image.getBoundingClientRect();
+    isPointerPlaying =
+      true;
 
 
 
-    // ---------------------------------
-    // 表示画像上のタップ座標
-    // ---------------------------------
+    /*
+      今押された指・マウスの
+      pointerIdを記憶する。
+    */
 
-    const displayX =
-      event.clientX -
-      rect.left;
-
-
-    const displayY =
-      event.clientY -
-      rect.top;
+    activePointerId =
+      event.pointerId;
 
 
 
-    // ---------------------------------
-    // 0～1の比率座標に変換
-    // ---------------------------------
+    /*
+      新しい演奏が始まったので、
 
-    const clickX =
-      displayX /
-      rect.width;
+      「最後に鳴らした音符」
 
+      の記憶をリセットする。
+    */
 
-    const clickY =
-      displayY /
-      rect.height;
-
-
-
-    // ---------------------------------
-    // 一番近い音符を探す準備
-    // ---------------------------------
-
-    let nearestNote =
+    lastPlayedNote =
       null;
 
 
+
+    // ---------------------------------
+    // Pointer Capture
+    // ---------------------------------
+
     /*
-      実際の距離ではなく
-      「距離の2乗」を保存する。
+      Pointer Captureを使うと、
+
+      指やマウスが画像の外へ
+      少し出た場合でも、
+
+      pointermove
+      pointerup
+
+      をこの画像が
+      受け取り続けられる。
+
+
+      スライド操作を
+      安定させるための処理。
     */
 
-    let nearestDistanceSquared =
-      Infinity;
+    try {
 
+      image.setPointerCapture(
+        event.pointerId
+      );
 
+    }
 
-    // ---------------------------------
-    // すべての音符との距離を調べる
-    // ---------------------------------
-
-    for (
-      const note
-      of notes
-    ) {
-
-
-      // X方向の差
-
-      const dx =
-        clickX -
-        note.xRatio;
-
-
-      // Y方向の差
-
-      const dy =
-        clickY -
-        note.yRatio;
+    catch (error) {
 
 
       /*
-        【レスポンス改善】
+        Pointer Captureが
+        使用できない環境でも、
 
-        本来の距離は
+        通常のタップ演奏自体は
+        続けることができる。
 
-        √(dx² + dy²)
 
-        だが、
-
-        一番近い音符を探すだけなら
-        √を計算する必要はない。
-
-        dx² + dy²
-
-        の大小関係だけで
-        同じ結果になる。
+        そのため、
+        エラーになっても
+        アプリ全体は停止させない。
       */
 
-      const distanceSquared =
-        dx * dx +
-        dy * dy;
-
-
-      /*
-        今まで見つけた音符より
-        今回の音符のほうが近ければ更新する。
-      */
-
-      if (
-        distanceSquared <
-        nearestDistanceSquared
-      ) {
-
-        nearestDistanceSquared =
-          distanceSquared;
-
-
-        nearestNote =
-          note;
-
-      }
+      console.warn(
+        "Pointer Captureを開始できませんでした。",
+        error
+      );
 
     }
 
 
 
     // ---------------------------------
-    // 音符の範囲内なら音を鳴らす
+    // 押した位置の音符を鳴らす
     // ---------------------------------
 
     /*
-      hitRadiusSquaredも
-      あらかじめ計算してあるので
+      ここで従来の
 
-      ここでも平方根は不要。
+      「押した瞬間に鳴る」
+
+      動作も維持する。
+    */
+
+    playNoteAtPointer(
+      event
+    );
+
+  }
+
+);
+
+
+
+// =====================================
+// 押したまま移動
+// =====================================
+
+image.addEventListener(
+  "pointermove",
+
+  function(event) {
+
+
+    // ---------------------------------
+    // 演奏中でなければ何もしない
+    // ---------------------------------
+
+    /*
+      pointermoveは、
+
+      指を押していない状態の
+      マウス移動などでも
+      発生することがある。
+
+
+      pointerdownから始まった
+      演奏中だけ処理する。
     */
 
     if (
-      nearestNote &&
-      nearestDistanceSquared <=
-      hitRadiusSquared
+      !isPointerPlaying
     ) {
 
-
-      // ---------------------------------
-      // キー変更を音程に反映
-      // ---------------------------------
-
-      /*
-        keyMultiplierは
-        キー変更時に計算済み。
-
-        ここでは単純な掛け算だけ行う。
-      */
-
-      const shiftedFrequency =
-
-        nearestNote.frequency *
-        keyMultiplier;
-
-
-
-      // ---------------------------------
-      // 音を最優先で再生
-      // ---------------------------------
-
-      /*
-        見た目の処理より先に
-        音の再生処理を開始する。
-      */
-
-      playSound(
-        shiftedFrequency
-      );
-
-
-
-      // ---------------------------------
-      // タップ位置を光らせる
-      // ---------------------------------
-
-      /*
-        音の再生処理を開始してから
-        見た目の処理を行う。
-      */
-
-      flash(
-        displayX,
-        displayY
-      );
+      return;
 
     }
 
 
+
+    // ---------------------------------
+    // 最初に押したpointerだけを使う
+    // ---------------------------------
+
+    /*
+      スマホでは複数の指を
+      同時に置ける。
+
+
+      今回は、
+
+      pointerdownした
+      最初の指だけを
+
+      演奏用として扱う。
+    */
+
+    if (
+      event.pointerId !==
+      activePointerId
+    ) {
+
+      return;
+
+    }
+
+
+
+    // ---------------------------------
+    // 現在位置の音符を判定
+    // ---------------------------------
+
+    /*
+      指を動かすたびに、
+
+      現在位置にある音符を調べる。
+
+
+      ただし、
+
+      playNoteAtPointer()
+
+      の中で前回の音符と
+      比較しているため、
+
+      同じ音符の中では
+      何度も鳴らない。
+    */
+
+    playNoteAtPointer(
+      event
+    );
+
   }
+
+);
+
+
+
+// =====================================
+// スライド演奏終了
+// =====================================
+
+function finishPointerPlaying(
+  event
+) {
+
+
+  // ---------------------------------
+  // 別のpointerなら無視
+  // ---------------------------------
+
+  if (
+    event.pointerId !==
+    activePointerId
+  ) {
+
+    return;
+
+  }
+
+
+
+  // ---------------------------------
+  // 演奏状態を解除
+  // ---------------------------------
+
+  isPointerPlaying =
+    false;
+
+
+  activePointerId =
+    null;
+
+
+  lastPlayedNote =
+    null;
+
+}
+
+
+
+// =====================================
+// 指・マウスを離した
+// =====================================
+
+image.addEventListener(
+  "pointerup",
+
+  finishPointerPlaying
+);
+
+
+
+// =====================================
+// pointer操作が中断された
+// =====================================
+
+image.addEventListener(
+  "pointercancel",
+
+  finishPointerPlaying
+);
+
+
+
+/*
+  pointercancelは、
+
+  ブラウザやOS側の都合などで
+  pointer操作が途中終了した場合に
+  発生する。
+
+
+  pointerupだけに頼らず
+  こちらにも対応しておくことで、
+
+  「演奏中のままになってしまう」
+
+  事故を防ぐ。
+*/
+
+
+
+// =====================================
+// Pointer Captureが失われた場合
+// =====================================
+
+image.addEventListener(
+  "lostpointercapture",
+
+  function(event) {
+
+
+    /*
+      何らかの理由で
+      Pointer Captureが解除された場合も、
+
+      演奏状態をリセットする。
+    */
+
+    if (
+      event.pointerId ===
+      activePointerId
+    ) {
+
+      isPointerPlaying =
+        false;
+
+
+      activePointerId =
+        null;
+
+
+      lastPlayedNote =
+        null;
+
+    }
+
+  }
+
 );
