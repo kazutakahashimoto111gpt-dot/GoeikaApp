@@ -332,20 +332,112 @@ if ("audioSession" in navigator) { //Audio Session APIに対応していない�
 
 
 // ============================================
-// AudioContext(実際に音を扱うオブジェクト)を作成
+// AudioContext
+//
+// 実際に音を扱うためのオブジェクト
 // ============================================
 
+
+// --------------------------------------------
+// 使用するAudioContextの種類を決める
+// --------------------------------------------
+
 const AudioContextClass =
-  window.AudioContext ||
-  window.webkitAudioContext;
-  /*AudioContext が使えるならそれを使う。なければ webkitAudioContext を使う。
-  SafariはwebkitAudioContextしか使えないので、両方を定義しておく必要がある。*/  
+
+  window.AudioContext || window.webkitAudioContext;
 
 
-const audioContext =
+/*
+  通常のブラウザでは
+  window.AudioContext を使用する。
+
+  Safariなど一部の環境では
+  window.webkitAudioContext が使われることがある。
+
+  「||」は、左側が使えれば左側、使えなければ右側という意味。
+*/
+
+
+// --------------------------------------------
+// AudioContextを作成
+// --------------------------------------------
+
+let audioContext =
+
   new AudioContextClass();
 
+// ============================================
+// AudioContextを使用可能な状態にする
+// ============================================
 
+async function ensureAudioContext() {
+
+  /*
+    AudioContextには主に
+
+    running : 正常に動いている
+    suspended : 一時停止している
+    closed : 完全に終了している
+
+    という状態がある。
+  */
+
+  // ------------------------------------------
+  // 完全に終了していた場合
+  // ------------------------------------------
+
+  if (
+    audioContext.state ===
+    "closed"
+  ) {
+
+
+    /*
+      closedになったAudioContextは
+      resume()では復活できない。
+
+      そのため、新しいAudioContextを
+      作り直す。
+    */
+
+    audioContext =
+
+      new AudioContextClass();
+
+  }
+
+
+
+  // ------------------------------------------
+  // 一時停止していた場合
+  // ------------------------------------------
+
+  if (
+    audioContext.state ===
+    "suspended"
+  ) {
+
+
+    /*
+      iPhoneなどでは、アプリを開き直したときやバックグラウンドから戻ったときに、
+
+      AudioContextがsuspended
+      
+      になっていることがある。resume()を実行することで、
+
+      suspended
+          ↓
+      running
+
+      に戻す。
+    */
+
+    await audioContext.resume();
+
+  }
+
+
+}
 
 // =====================================
 // 琴風サウンド
