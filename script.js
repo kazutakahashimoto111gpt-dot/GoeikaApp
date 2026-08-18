@@ -469,9 +469,9 @@ audioStartOverlay.addEventListener(
   async function(event) {
 
 
-    event.preventDefault();
+    // event.preventDefault();
 
-    event.stopPropagation();
+    // event.stopPropagation();
 
 
 
