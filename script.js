@@ -456,12 +456,6 @@ let audioContext =
 // 音声開始用オーバーレイ
 // ============================================
 
-const audioStartOverlay =
-  document.getElementById(
-    "audioStartOverlay"
-  );
-
-
 const audioStartMessage =
   document.getElementById(
     "audioStartMessage"
