@@ -521,6 +521,15 @@ let audioContextNeedsReset =
 
 // ============================================
 // AudioContextを使用可能な状態にする
+
+  // audioContext.state : 現在のAudioContextの状態を表します。
+
+  // 代表的な状態は以下の通りです。
+
+  // "running"      → 正常に動いている
+  // "suspended"    → 一時停止している
+  // "interrupted"  → OSなどによって中断されている
+  // "closed"       → 終了している
 // ============================================
 
 async function ensureAudioContext() {
@@ -651,7 +660,6 @@ async function ensureAudioContext() {
   }
 
 
-
   // ------------------------------------------
   // 最終確認
   // ------------------------------------------
@@ -684,6 +692,19 @@ async function ensureAudioContext() {
     );
 
   }
+
+  // この関数全体ensureAudioContext()が別のところで、
+
+  // try {
+  //   await ensureAudioContext();
+  // } catch (error) {
+  //   // AudioContextを作り直す等
+  // }
+
+  // のように呼ばれているなら、catch に処理を渡すために、ここで throw しているわけです。
+  // なので throw は単なる「コンソールにエラーを表示する」より強いです。
+  // 「これは正常に処理を続けられる状態じゃないぞ。エラーとして扱ってくれ」
+  // と、その場の通常処理を中断して、エラー処理側へ渡すものです。
 
 }
 
