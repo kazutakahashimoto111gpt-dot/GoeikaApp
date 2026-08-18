@@ -416,6 +416,31 @@ if (
 }
 
 // =====================================
+// Media Session
+// ロック画面などにアプリ情報を表示
+// =====================================
+
+if ("mediaSession" in navigator) {
+
+  navigator.mediaSession.metadata =
+    new MediaMetadata({
+
+      title: "音符アプリ",
+      artist: "someone",
+
+      artwork: [
+        {
+          src: "./icons/icon-512.png",
+          sizes: "512x512",
+          type: "image/png"
+        }
+      ]
+
+    });
+
+}
+
+// =====================================
 // AudioContext
 //
 // 実際に音を扱うためのオブジェクト
