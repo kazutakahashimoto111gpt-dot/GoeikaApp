@@ -451,6 +451,90 @@ const AudioContextClass =
 let audioContext =
   new AudioContextClass();
 
+  
+// ============================================
+// 音声開始用オーバーレイ
+// ============================================
+
+const audioStartOverlay =
+  document.getElementById(
+    "audioStartOverlay"
+  );
+
+
+
+audioStartOverlay.addEventListener(
+  "pointerdown",
+
+  async function(event) {
+
+
+    /*
+      このタップは
+
+      「音声システムを起動する」
+
+      ためだけに使用する。
+
+
+      下にある音符画像には
+      タップを伝えない。
+    */
+
+    event.preventDefault();
+
+    event.stopPropagation();
+
+
+
+    // ----------------------------------------
+    // AudioContextを起動
+    // ----------------------------------------
+
+    try {
+
+
+      if (
+        audioContext.state ===
+        "suspended"
+      ) {
+
+        await audioContext.resume();
+
+      }
+
+
+
+      /*
+        AudioContextが使用可能になったら
+        オーバーレイを消す。
+      */
+
+      if (
+        audioContext.state ===
+        "running"
+      ) {
+
+        audioStartOverlay.style.display =
+          "none";
+
+      }
+
+
+    }
+    catch (error) {
+
+
+      console.warn(
+        "AudioContextを開始できませんでした。",
+        error
+      );
+
+    }
+
+  }
+);
+
 
 
 // ============================================

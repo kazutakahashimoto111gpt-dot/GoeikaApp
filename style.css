@@ -603,3 +603,58 @@ body {
     none;
 
 }
+
+/* =====================================
+   音声開始用オーバーレイ
+   ===================================== */
+
+#audioStartOverlay {
+
+  /*
+    画面全体を覆う
+  */
+  position: fixed;
+
+  inset: 0;
+
+
+  /*
+    下の音符画面が見える程度に
+    薄いグレーをかける
+  */
+  background:
+    rgba(100, 100, 100, 0.25);
+
+
+  /*
+    音符などより手前に表示する
+  */
+  z-index: 10000;
+
+
+  /*
+    中央にメッセージを表示
+  */
+  display: flex;
+
+  justify-content: center;
+
+  align-items: center;
+
+}
+
+
+#audioStartMessage {
+
+  padding: 12px 20px;
+
+  background:
+    rgba(255, 255, 255, 0.9);
+
+  border-radius: 10px;
+
+  font-size: 16px;
+
+  color: #333;
+
+}
