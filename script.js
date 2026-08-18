@@ -415,9 +415,7 @@ if (
 
 }
 
-
-
-// ============================================
+// =====================================
 // AudioContext
 //
 // 実際に音を扱うためのオブジェクト
@@ -452,122 +450,6 @@ let audioContext =
   new AudioContextClass();
 
 
-// ============================================
-// 音声開始用オーバーレイ
-// ============================================
-
-const audioStartMessage =
-  document.getElementById(
-    "audioStartMessage"
-  );
-
-
-
-audioStartOverlay.addEventListener(
-  "pointerdown",
-
-  function(event) {
-
-
-    // ----------------------------------------
-    // このタップを音符側へ伝えない
-    // ----------------------------------------
-
-    event.preventDefault();
-
-    event.stopPropagation();
-
-
-
-    // ----------------------------------------
-    // すでにAudioContextが動いている場合
-    // ----------------------------------------
-
-    if (
-      audioContext.state ===
-      "running"
-    ) {
-
-      audioStartOverlay.style.display =
-        "none";
-
-      return;
-
-    }
-
-
-
-    // ----------------------------------------
-    // AudioContextの起動を試す
-    // ----------------------------------------
-
-    audioStartMessage.textContent =
-      "起動中...";
-
-
-    audioContext.resume()
-      .then(
-        function() {
-
-
-          // ----------------------------------
-          // 起動成功
-          // ----------------------------------
-
-          if (
-            audioContext.state ===
-            "running"
-          ) {
-
-            audioStartOverlay.style.display =
-              "none";
-
-          }
-
-        }
-      )
-      .catch(
-        function(error) {
-
-
-          console.warn(
-            "AudioContextを開始できませんでした。",
-            error
-          );
-
-        }
-      );
-
-
-
-    // ----------------------------------------
-    // 少し待っても起動していなければ
-    // 再タップを案内
-    // ----------------------------------------
-
-    setTimeout(
-      function() {
-
-
-        if (
-          audioContext.state !==
-          "running"
-        ) {
-
-          audioStartMessage.textContent =
-            "もう一度タップしてください";
-
-        }
-
-      },
-
-      500
-    );
-
-  }
-);
-
-
 
 // ============================================
 // AudioContext再作成フラグ
@@ -580,8 +462,7 @@ let audioContextNeedsReset =
 /*
   この変数は、
 
-  「次に音符をタップしたときに
-   AudioContextを作り直す必要があるか」
+  「AudioContextを作り直す必要があるか」
 
   を記憶するためのもの。
 
@@ -593,84 +474,22 @@ let audioContextNeedsReset =
 
   true
     ↓
-  次のタップ時に作り直す
+  次の音声準備時に作り直す
 
 
   という意味。
+
+
+  iPhoneなどでは、
+
+  アプリをバックグラウンドへ移動したあと
+  AudioContextが正常に復帰しない場合がある。
+
+  そのため、
+
+  バックグラウンドへ移動したことを
+  検出したら true にする。
 */
-
-
-
-// ============================================
-// アプリがバックグラウンドへ移動したことを検出
-// ============================================
-
-document.addEventListener(
-  "visibilitychange",
-
-  function() {
-
-
-    /*
-      visibilityStateが
-
-      hidden
-
-      になった場合、
-
-      このページが画面から見えなくなった
-      ということ。
-
-
-      たとえば、
-
-      ・ホーム画面へ戻った
-      ・別のアプリへ切り替えた
-      ・ブラウザの別タブへ移動した
-
-      など。
-    */
-
-    if (
-      document.visibilityState ===
-      "hidden"
-    ) {
-
-
-      /*
-        iPhoneなどでは、
-
-        バックグラウンドへ移動したあと
-        AudioContextが正常に復帰しないことがある。
-
-
-        しかも場合によっては
-
-        audioContext.state
-
-        が
-
-        "running"
-
-        になっていても、
-        実際には音が出ない可能性がある。
-
-
-        そこで、
-
-        「バックグラウンドへ行った」
-
-        という事実そのものを記録しておく。
-      */
-
-      audioContextNeedsReset =
-        true;
-
-    }
-
-
-  }
-);
 
 
 
@@ -693,76 +512,46 @@ async function ensureAudioContext() {
     /*
       古いAudioContextをそのまま信用せず、
 
-      次のユーザー操作（音符タップ）のときに
+      ユーザーが画面をタップしたときに
       新しいAudioContextへ交換する。
 
 
-      AudioContextの再作成を
-      pointerdownの中から行うため、
+      ここで重要なのは、
 
-      iPhoneが要求する
+      再作成フラグを先に解除してから
+      新しいAudioContextへ交換すること。
 
-      「ユーザー操作をきっかけに音声を開始する」
 
-      という条件にも合わせやすい。
+      iPhoneで最初のresume()が
+      保留状態になり、
+
+      その間にもう一度タップされた場合でも、
+
+      AudioContextを二重に
+      作り直さないようにする。
     */
 
 
     // ----------------------------------------
-    // 古いAudioContextを終了させる
+    // 再作成フラグを先に解除
     // ----------------------------------------
 
-    try {
-
-
-      /*
-        まだclosedでなければ
-        close()を試す。
-      */
-
-      if (
-        audioContext.state !==
-        "closed"
-      ) {
-
-        await audioContext.close();
-
-      }
-
-
-    }
-    catch (error) {
-
-
-      /*
-        iPhoneなどでclose()が
-        何らかの理由で失敗しても、
-
-        アプリ全体を停止させない。
-
-
-        今回の目的は
-
-        「古いAudioContextを捨てて
-         新しいものを使う」
-
-        ことなので、
-
-        close()の失敗そのものは
-        致命的ではない。
-      */
-
-      console.warn(
-        "AudioContextを終了できませんでした。",
-        error
-      );
-
-    }
+    audioContextNeedsReset =
+      false;
 
 
 
     // ----------------------------------------
-    // 新しいAudioContextを作成
+    // 古いAudioContextを退避
+    // ----------------------------------------
+
+    const oldAudioContext =
+      audioContext;
+
+
+
+    // ----------------------------------------
+    // 新しいAudioContextを先に作成
     // ----------------------------------------
 
     audioContext =
@@ -771,11 +560,44 @@ async function ensureAudioContext() {
 
 
     // ----------------------------------------
-    // 再作成フラグを解除
+    // 古いAudioContextの終了を試す
     // ----------------------------------------
 
-    audioContextNeedsReset =
-      false;
+    /*
+      close()の完了はここでは待たない。
+
+      古いAudioContextの終了待ちによって、
+
+      新しいAudioContextの準備が
+      遅れることを避けるため。
+
+
+      close()に失敗しても、
+
+      新しいAudioContextは
+      すでに作成済みなので、
+
+      アプリ全体は停止させない。
+    */
+
+    if (
+      oldAudioContext.state !==
+      "closed"
+    ) {
+
+      oldAudioContext.close()
+        .catch(
+          function(error) {
+
+            console.warn(
+              "AudioContextを終了できませんでした。",
+              error
+            );
+
+          }
+        );
+
+    }
 
   }
 
@@ -795,7 +617,9 @@ async function ensureAudioContext() {
       closedになったAudioContextは
       resume()では復活できない。
 
-      そのため新しいものを作る。
+      そのため、
+
+      新しいAudioContextを作成する。
     */
 
     audioContext =
@@ -820,11 +644,20 @@ async function ensureAudioContext() {
       resume()で再開する。
 
 
-      この関数は音符をタップした
-      pointerdownから呼ばれるので、
+      iPhoneでは、
 
-      ユーザー操作をきっかけに
-      resume()することになる。
+      最初のresume()が
+      すぐ完了せず、
+
+      次のユーザー操作まで
+      Promiseが保留になる場合がある。
+
+
+      その場合でも、
+
+      2回目のタップでは
+      同じAudioContextに対して
+      resume()を試すことができる。
     */
 
     await audioContext.resume();
@@ -834,6 +667,290 @@ async function ensureAudioContext() {
 }
 
 
+
+// ============================================
+// 音声開始用オーバーレイ
+// ============================================
+
+const audioStartOverlay =
+  document.getElementById(
+    "audioStartOverlay"
+  );
+
+
+const audioStartMessage =
+  document.getElementById(
+    "audioStartMessage"
+  );
+
+
+
+audioStartOverlay.addEventListener(
+  "pointerdown",
+
+  function(event) {
+
+
+    // ----------------------------------------
+    // このタップは音声準備専用
+    // ----------------------------------------
+
+    event.preventDefault();
+    // イベントに対して
+    // ブラウザが本来行う標準動作を
+    // キャンセルする
+
+
+    event.stopPropagation();
+    // 発生したイベントが
+    // 親要素へ伝わっていくのを止める
+
+
+
+    // ----------------------------------------
+    // すでに音声準備が完了している場合
+    // ----------------------------------------
+
+    if (
+      audioContext.state ===
+        "running" &&
+      !audioContextNeedsReset
+    ) {
+
+
+      audioStartOverlay.style.display =
+        "none";
+
+
+      return;
+
+    }
+
+
+
+    // ----------------------------------------
+    // 音声の準備を開始
+    // ----------------------------------------
+
+    audioStartMessage.textContent =
+      "起動中...";
+
+
+    /*
+      AudioContextに関する準備は
+
+      ensureAudioContext()
+
+      にまとめて任せる。
+
+
+      初回起動なら
+        ↓
+      resume()
+
+
+      バックグラウンド復帰後なら
+        ↓
+      新しいAudioContextを作成
+        ↓
+      古いAudioContextの終了を試す
+        ↓
+      resume()
+
+
+      という処理になる。
+    */
+
+    ensureAudioContext()
+
+      .then(
+        function() {
+
+
+          // ----------------------------------
+          // 音声準備成功
+          // ----------------------------------
+
+          if (
+            audioContext.state ===
+              "running" &&
+            !audioContextNeedsReset
+          ) {
+
+
+            audioStartOverlay.style.display =
+              "none";
+
+          }
+
+        }
+      )
+
+
+      .catch(
+        function(error) {
+
+
+          console.warn(
+            "AudioContextを開始できませんでした。",
+            error
+          );
+
+        }
+      );
+
+
+
+    // ----------------------------------------
+    // 少し待っても準備できなければ
+    // 再タップを案内
+    // ----------------------------------------
+
+    setTimeout(
+      function() {
+
+
+        /*
+          500ミリ秒経っても
+
+          AudioContextがrunningでない、
+
+          または
+
+          再作成処理が必要なら、
+
+          ユーザーへ
+          もう一度タップしてもらう。
+        */
+
+        if (
+          audioContext.state !==
+            "running" ||
+          audioContextNeedsReset
+        ) {
+
+          audioStartMessage.textContent =
+            "もう一度タップしてください";
+
+        }
+
+      },
+
+      500
+    );
+
+  }
+);
+
+
+
+// ============================================
+// アプリの表示・非表示を検出
+// ============================================
+
+document.addEventListener(
+  "visibilitychange",
+
+  function() {
+
+
+    // ----------------------------------------
+    // アプリが画面から見えなくなった
+    // ----------------------------------------
+
+    if (
+      document.visibilityState ===
+      "hidden"
+    ) {
+
+
+      /*
+        visibilityStateが
+
+        hidden
+
+        になったということは、
+
+
+        ・ホーム画面へ戻った
+
+        ・別のアプリへ切り替えた
+
+        ・画面を閉じた
+
+        ・ブラウザの別タブへ移動した
+
+
+        などの可能性がある。
+
+
+        iPhoneでは、
+
+        このあとAudioContextが
+        正常に復帰しない場合がある。
+
+
+        そこで、
+
+        次回の音声準備時に
+
+        AudioContextを
+        作り直す必要がある
+
+        ことを記録する。
+      */
+
+      audioContextNeedsReset =
+        true;
+
+    }
+
+
+
+    // ----------------------------------------
+    // アプリが再び画面に表示された
+    // ----------------------------------------
+
+    if (
+      document.visibilityState ===
+      "visible"
+    ) {
+
+
+      /*
+        復帰直後の最初の音符タップを
+
+        AudioContextの再準備に
+        消費しないようにする。
+
+
+        まずオーバーレイを表示し、
+
+        ユーザーに
+
+        「音声を準備するためのタップ」
+
+        をしてもらう。
+      */
+
+
+      // メッセージを初期状態へ戻す
+
+      audioStartMessage.textContent =
+        "タップして開始";
+
+
+
+      // オーバーレイを再表示
+
+      audioStartOverlay.style.display =
+        "flex";
+
+    }
+
+
+  }
+);
 
 // =====================================
 // 琴風サウンド
