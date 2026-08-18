@@ -428,13 +428,13 @@ if ("mediaSession" in navigator) {
       title: "音符アプリ",
       artist: "someone",
 
-      artwork: [
-        {
-          src: "./icons/icon-512.png",
-          sizes: "512x512",
-          type: "image/png"
-        }
-      ]
+      // artwork: [
+      //   {
+      //     src: "./icons/icon-512.png",
+      //     sizes: "512x512",
+      //     type: "image/png"
+      //   }
+      // ]
 
     });
 
