@@ -488,7 +488,7 @@ audioStartOverlay.addEventListener(
     // AudioContextを起動
     // ----------------------------------------
 
-    try {
+    // try {
 
 
       if (
@@ -541,20 +541,20 @@ audioStartOverlay.addEventListener(
       }
 
 
-    }
-    catch (error) {
+    // }
+    // catch (error) {
 
 
-      audioStartMessage.textContent =
-        "エラー";
+    //   audioStartMessage.textContent =
+    //     "エラー";
 
 
-      console.warn(
-        "AudioContextを開始できませんでした。",
-        error
-      );
+    //   console.warn(
+    //     "AudioContextを開始できませんでした。",
+    //     error
+    //   );
 
-    }
+    // }
 
   }
 );
