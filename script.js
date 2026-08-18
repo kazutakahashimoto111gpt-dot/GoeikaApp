@@ -460,12 +460,22 @@ const AudioContextClass =
 
 
 // --------------------------------------------
-// AudioContextを作成
+// AudioContext
 // --------------------------------------------
 
-let audioContext =
-  new AudioContextClass();
+/*
+  起動直後には、まだAudioContextを作らない。
 
+  iPhone / iPadなどでは、
+  ユーザー操作より前にAudioContextを作ると、
+  まれに音声開始が不安定になる場合がある。
+
+  そこで最初のユーザー操作時に
+  ensureAudioContext() の中で作成する。
+*/
+
+let audioContext =
+  null;
 
 
 // ============================================
@@ -509,12 +519,35 @@ let audioContextNeedsReset =
 */
 
 
-
 // ============================================
 // AudioContextを使用可能な状態にする
 // ============================================
 
 async function ensureAudioContext() {
+
+
+  // ------------------------------------------
+  // AudioContextがまだ無い場合
+  // ------------------------------------------
+
+  if (
+    !audioContext
+  ) {
+
+    /*
+      初回のユーザー操作の中で
+      AudioContextを初めて作成する。
+
+      起動時に先回りして作るより、
+      iPhone / iPadなどで
+      音声開始が安定しやすい。
+    */
+
+    audioContext =
+      new AudioContextClass();
+
+  }
+
 
 
   // ------------------------------------------
@@ -525,81 +558,41 @@ async function ensureAudioContext() {
     audioContextNeedsReset
   ) {
 
-
     /*
       古いAudioContextをそのまま信用せず、
-
-      ユーザーが画面をタップしたときに
+      ユーザー操作中に
       新しいAudioContextへ交換する。
 
-
-      ここで重要なのは、
-
-      再作成フラグを先に解除してから
-      新しいAudioContextへ交換すること。
-
-
-      iPhoneで最初のresume()が
-      保留状態になり、
-
-      その間にもう一度タップされた場合でも、
-
-      AudioContextを二重に
-      作り直さないようにする。
+      フラグは先に解除して、
+      連続タップで二重に
+      作り直されにくくする。
     */
-
-
-    // ----------------------------------------
-    // 再作成フラグを先に解除
-    // ----------------------------------------
 
     audioContextNeedsReset =
       false;
 
 
 
-    // ----------------------------------------
     // 古いAudioContextを退避
-    // ----------------------------------------
 
     const oldAudioContext =
       audioContext;
 
 
 
-    // ----------------------------------------
-    // 新しいAudioContextを先に作成
-    // ----------------------------------------
+    // 新しいAudioContextを作成
 
     audioContext =
       new AudioContextClass();
 
 
 
-    // ----------------------------------------
-    // 古いAudioContextの終了を試す
-    // ----------------------------------------
-
-    /*
-      close()の完了はここでは待たない。
-
-      古いAudioContextの終了待ちによって、
-
-      新しいAudioContextの準備が
-      遅れることを避けるため。
-
-
-      close()に失敗しても、
-
-      新しいAudioContextは
-      すでに作成済みなので、
-
-      アプリ全体は停止させない。
-    */
+    // 古いAudioContextを終了
 
     if (
+      oldAudioContext &&
       oldAudioContext.state !==
-      "closed"
+        "closed"
     ) {
 
       oldAudioContext.close()
@@ -626,17 +619,13 @@ async function ensureAudioContext() {
 
   if (
     audioContext.state ===
-    "closed"
+      "closed"
   ) {
-
 
     /*
       closedになったAudioContextは
-      resume()では復活できない。
-
-      そのため、
-
-      新しいAudioContextを作成する。
+      resume()では復活できないので、
+      新しく作り直す。
     */
 
     audioContext =
@@ -647,37 +636,52 @@ async function ensureAudioContext() {
 
 
   // ------------------------------------------
-  // suspendedだった場合
+  // suspended / interrupted なら再開
   // ------------------------------------------
 
   if (
     audioContext.state ===
-    "suspended"
+      "suspended" ||
+    audioContext.state ===
+      "interrupted"
   ) {
 
-
-    /*
-      AudioContextが一時停止状態なら
-      resume()で再開する。
-
-
-      iPhoneでは、
-
-      最初のresume()が
-      すぐ完了せず、
-
-      次のユーザー操作まで
-      Promiseが保留になる場合がある。
-
-
-      その場合でも、
-
-      2回目のタップでは
-      同じAudioContextに対して
-      resume()を試すことができる。
-    */
-
     await audioContext.resume();
+
+  }
+
+
+
+  // ------------------------------------------
+  // 最終確認
+  // ------------------------------------------
+
+  /*
+    resume()がエラーにならなくても、
+
+    実際にはAudioContextが
+    runningになっていない可能性がある。
+
+    その状態でplaySound()へ進むと、
+
+    「エフェクトは表示されるが
+      音が鳴らない」
+
+    という状態になる可能性がある。
+
+    そこで発音前に
+    本当にrunningなのか確認する。
+  */
+
+  if (
+    audioContext.state !==
+      "running"
+  ) {
+
+    throw new Error(
+      "AudioContextがrunningになっていません。state=" +
+      audioContext.state
+    );
 
   }
 
@@ -728,12 +732,12 @@ audioStartOverlay.addEventListener(
     // すでに音声準備が完了している場合
     // ----------------------------------------
 
-    if (
-      audioContext.state ===
-        "running" &&
-      !audioContextNeedsReset
-    ) {
-
+   if (
+  audioContext &&
+  audioContext.state ===
+    "running" &&
+  !audioContextNeedsReset
+  ) {
 
       audioStartOverlay.style.display =
         "none";
@@ -841,6 +845,7 @@ audioStartOverlay.addEventListener(
         */
 
         if (
+          !audioContext ||
           audioContext.state !==
             "running" ||
           audioContextNeedsReset
@@ -1766,25 +1771,40 @@ image.addEventListener(
     // AudioContext確認
     // ---------------------------------
 
-    /*
-      iPhoneなどで
-      バックグラウンドから
-      復帰した場合も考慮する。
+    try {
+
+      await ensureAudioContext();
+
+    }
+
+    catch (error) {
+
+      console.warn(
+        "AudioContextの準備に失敗しました。",
+        error
+      );
 
 
-      pointerdownという
-
-      「明確なユーザー操作」
-
-      の中でAudioContextを
-      使用可能な状態にする。
+      audioStartMessage.textContent =
+        "もう一度タップしてください";
 
 
-      ここは従来の
-      iPhone対策をそのまま維持。
-    */
+      audioStartOverlay.style.display =
+        "flex";
 
-    await ensureAudioContext();
+
+      return;
+
+    }
+
+
+
+    // ---------------------------------
+    // スライド演奏開始
+    // ---------------------------------
+
+    isPointerPlaying =
+      true;
 
 
 
