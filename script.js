@@ -451,7 +451,7 @@ const AudioContextClass =
 let audioContext =
   new AudioContextClass();
 
-  
+
 // ============================================
 // 音声開始用オーバーレイ
 // ============================================
@@ -469,21 +469,18 @@ audioStartOverlay.addEventListener(
   async function(event) {
 
 
-    /*
-      このタップは
-
-      「音声システムを起動する」
-
-      ためだけに使用する。
-
-
-      下にある音符画像には
-      タップを伝えない。
-    */
-
     event.preventDefault();
 
     event.stopPropagation();
+
+
+
+    // ----------------------------------------
+    // タップされたことを表示
+    // ----------------------------------------
+
+    audioStartMessage.textContent =
+      "起動中...";
 
 
 
@@ -505,24 +502,51 @@ audioStartOverlay.addEventListener(
 
 
 
-      /*
-        AudioContextが使用可能になったら
-        オーバーレイを消す。
-      */
+      // --------------------------------------
+      // resume後の状態を表示
+      // --------------------------------------
+
+      audioStartMessage.textContent =
+        "Audio: " +
+        audioContext.state;
+
+
+
+      // --------------------------------------
+      // runningなら少し待って画面を戻す
+      // --------------------------------------
 
       if (
         audioContext.state ===
         "running"
       ) {
 
-        audioStartOverlay.style.display =
-          "none";
+
+        /*
+          状態を目で確認できるように
+          1秒だけ表示してから消す
+        */
+
+        setTimeout(
+          function() {
+
+            audioStartOverlay.style.display =
+              "none";
+
+          },
+
+          1000
+        );
 
       }
 
 
     }
     catch (error) {
+
+
+      audioStartMessage.textContent =
+        "エラー";
 
 
       console.warn(
