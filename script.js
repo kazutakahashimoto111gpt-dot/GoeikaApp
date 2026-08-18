@@ -462,99 +462,113 @@ const audioStartOverlay =
   );
 
 
+const audioStartMessage =
+  document.getElementById(
+    "audioStartMessage"
+  );
+
+
 
 audioStartOverlay.addEventListener(
   "pointerdown",
 
-  async function(event) {
+  function(event) {
 
 
-    // event.preventDefault();
+    // ----------------------------------------
+    // このタップを音符側へ伝えない
+    // ----------------------------------------
 
-    // event.stopPropagation();
+    event.preventDefault();
+
+    event.stopPropagation();
 
 
 
     // ----------------------------------------
-    // タップされたことを表示
+    // すでにAudioContextが動いている場合
+    // ----------------------------------------
+
+    if (
+      audioContext.state ===
+      "running"
+    ) {
+
+      audioStartOverlay.style.display =
+        "none";
+
+      return;
+
+    }
+
+
+
+    // ----------------------------------------
+    // AudioContextの起動を試す
     // ----------------------------------------
 
     audioStartMessage.textContent =
       "起動中...";
 
 
-
-    // ----------------------------------------
-    // AudioContextを起動
-    // ----------------------------------------
-
-    // try {
+    audioContext.resume()
+      .then(
+        function() {
 
 
-      if (
-        audioContext.state ===
-        "suspended"
-      ) {
+          // ----------------------------------
+          // 起動成功
+          // ----------------------------------
 
-        await audioContext.resume();
-
-      }
-
-
-
-      // --------------------------------------
-      // resume後の状態を表示
-      // --------------------------------------
-
-      audioStartMessage.textContent =
-        "Audio: " +
-        audioContext.state;
-
-
-
-      // --------------------------------------
-      // runningなら少し待って画面を戻す
-      // --------------------------------------
-
-      if (
-        audioContext.state ===
-        "running"
-      ) {
-
-
-        /*
-          状態を目で確認できるように
-          1秒だけ表示してから消す
-        */
-
-        setTimeout(
-          function() {
+          if (
+            audioContext.state ===
+            "running"
+          ) {
 
             audioStartOverlay.style.display =
               "none";
 
-          },
+          }
 
-          1000
-        );
-
-      }
-
-
-    // }
-    // catch (error) {
+        }
+      )
+      .catch(
+        function(error) {
 
 
-    //   audioStartMessage.textContent =
-    //     "エラー";
+          console.warn(
+            "AudioContextを開始できませんでした。",
+            error
+          );
+
+        }
+      );
 
 
-    //   console.warn(
-    //     "AudioContextを開始できませんでした。",
-    //     error
-    //   );
 
-    // }
+    // ----------------------------------------
+    // 少し待っても起動していなければ
+    // 再タップを案内
+    // ----------------------------------------
+
+    setTimeout(
+      function() {
+
+
+        if (
+          audioContext.state !==
+          "running"
+        ) {
+
+          audioStartMessage.textContent =
+            "もう一度タップしてください";
+
+        }
+
+      },
+
+      500
+    );
 
   }
 );
