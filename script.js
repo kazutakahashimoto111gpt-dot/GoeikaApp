@@ -415,22 +415,7 @@ if (
 
 }
 
-// =====================================
-// Media Session
-// ロック画面などにアプリ情報を表示
-// =====================================
 
-if ("mediaSession" in navigator) {
-
-  navigator.mediaSession.metadata =
-    new MediaMetadata({
-
-      title: "音符アプリ",
-      artist: "someone",
-
-    });
-
-}
 
 // =====================================
 // AudioContext
@@ -753,12 +738,12 @@ audioStartOverlay.addEventListener(
     // すでに音声準備が完了している場合
     // ----------------------------------------
 
-   if (
-  audioContext &&
-  audioContext.state ===
-    "running" &&
-  !audioContextNeedsReset
-  ) {
+    if (
+      audioContext &&
+      audioContext.state ===
+        "running" &&
+      !audioContextNeedsReset
+    ) {
 
       audioStartOverlay.style.display =
         "none";
@@ -885,8 +870,6 @@ audioStartOverlay.addEventListener(
   }
 );
 
-
-
 // ============================================
 // アプリの表示・非表示を検出
 // ============================================
@@ -903,7 +886,7 @@ document.addEventListener(
 
     if (
       document.visibilityState ===
-      "hidden"
+        "hidden"
     ) {
 
 
@@ -927,24 +910,162 @@ document.addEventListener(
         などの可能性がある。
 
 
-        iPhoneでは、
+        今回はこの時点で、
 
-        このあとAudioContextが
-        正常に復帰しない場合がある。
+        使用中のAudioContextを
+        完全に終了する。
 
 
-        そこで、
+        従来はここで
 
-        次回の音声準備時に
+        audioContextNeedsReset = true;
 
-        AudioContextを
-        作り直す必要がある
+        として、
 
-        ことを記録する。
+        復帰後のユーザー操作時に
+        AudioContextを交換していた。
+
+
+        今回は、
+
+        画面から見えなくなった時点で
+        古いAudioContextを終了し、
+
+        次回は完全に新しい
+        AudioContextを作る方式にする。
+      */
+
+
+
+      // --------------------------------------
+      // 現在のAudioContextを退避
+      // --------------------------------------
+
+      const oldAudioContext =
+        audioContext;
+
+
+
+      // --------------------------------------
+      // 現在のAudioContextへの参照を解除
+      // --------------------------------------
+
+      /*
+        close()は非同期処理なので、
+
+        終了完了を待つより先に
+        audioContextをnullにする。
+
+
+        これによって、
+
+        これ以降アプリ側では
+        古いAudioContextを
+
+        現役のAudioContextとして
+        扱わない。
+      */
+
+      audioContext =
+        null;
+
+
+
+      // --------------------------------------
+      // 再作成フラグも解除
+      // --------------------------------------
+
+      /*
+        今回は古いAudioContextそのものを
+        ここで終了するので、
+
+        従来の
+
+        「あとで作り直す必要がある」
+
+        というフラグは必要ない。
+
+
+        falseにしておくことで、
+
+        次回ensureAudioContext()が
+        呼ばれたとき、
+
+        audioContext === null
+
+        の判定によって
+        新しいAudioContextが
+
+        1個だけ作成される。
       */
 
       audioContextNeedsReset =
-        true;
+        false;
+
+
+
+      // --------------------------------------
+      // 古いAudioContextを終了
+      // --------------------------------------
+
+      if (
+        oldAudioContext &&
+        oldAudioContext.state !==
+          "closed"
+      ) {
+
+        oldAudioContext.close()
+          .catch(
+            function(error) {
+
+              /*
+                close()に失敗した場合でも、
+
+                audioContext変数からは
+                すでに切り離してある。
+
+
+                そのため、
+
+                次回アプリを使用するときは
+                新しいAudioContextを
+
+                作成することができる。
+              */
+
+              console.warn(
+                "AudioContextを終了できませんでした。",
+                error
+              );
+
+            }
+          );
+
+      }
+
+
+
+      // --------------------------------------
+      // スライド演奏状態も解除
+      // --------------------------------------
+
+      /*
+        演奏中にアプリを閉じた場合に、
+
+        pointerの状態だけが
+        残ってしまわないようにする。
+      */
+
+      isPointerPlaying =
+        false;
+
+
+      activePointerId =
+        null;
+
+
+      lastPlayedNote =
+        null;
 
     }
 
@@ -956,24 +1077,36 @@ document.addEventListener(
 
     if (
       document.visibilityState ===
-      "visible"
+        "visible"
     ) {
 
 
       /*
-        復帰直後の最初の音符タップを
+        復帰した時点では、
 
-        AudioContextの再準備に
-        消費しないようにする。
+        AudioContextは作らない。
 
 
-        まずオーバーレイを表示し、
+        hiddenになったときに
 
-        ユーザーに
+        audioContext = null;
 
-        「音声を準備するためのタップ」
+        としてあるため、
 
-        をしてもらう。
+
+        このあとユーザーが
+
+        「タップして開始」
+
+        を押したときに
+
+        ensureAudioContext()
+
+        が呼ばれ、
+
+
+        新しいAudioContextが
+        ユーザー操作の中で作成される。
       */
 
 
@@ -994,6 +1127,8 @@ document.addEventListener(
 
   }
 );
+
+
 
 // =====================================
 // 琴風サウンド
@@ -1489,8 +1624,6 @@ let activePointerId =
 let lastPlayedNote =
   null;
 
-
-
 // =====================================
 // 指定位置の音符を探して鳴らす
 // =====================================
@@ -1824,14 +1957,21 @@ image.addEventListener(
     // スライド演奏開始
     // ---------------------------------
 
-    isPointerPlaying =
-      true;
+    /*
+      pointerdownが発生したので、
+
+      ここから指またはマウスによる
+      スライド演奏を開始する。
 
 
+      元コードではこの
 
-    // ---------------------------------
-    // スライド演奏開始
-    // ---------------------------------
+      isPointerPlaying = true;
+
+      が二重に書かれていたため、
+
+      今回1個に整理した。
+    */
 
     isPointerPlaying =
       true;
