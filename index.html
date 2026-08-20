@@ -145,6 +145,76 @@
 
   </div>
 
+    <!-- =====================================
+       アプリ情報
+       ===================================== -->
+
+  <!--
+    画面右上の小さな情報ボタン。
+
+    普段の演奏画面をできるだけシンプルに保ち、
+    アプリの説明や免責事項は必要なときだけ
+    ダイアログで確認できるようにする。
+  -->
+
+  <button
+    id="infoButton"
+    type="button"
+    aria-label="このアプリについて"
+    title="このアプリについて"
+  >
+    ⓘ
+  </button>
+
+
+  <!--
+    「このアプリについて」ダイアログ。
+
+    初期状態ではCSSで非表示。
+    情報ボタンを押したときだけ表示する。
+  -->
+
+  <div
+    id="infoOverlay"
+    aria-hidden="true"
+  >
+
+    <div
+      id="infoDialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="infoTitle"
+    >
+
+      <button
+        id="infoCloseButton"
+        type="button"
+        aria-label="閉じる"
+        title="閉じる"
+      >
+        ×
+      </button>
+
+      <h1 id="infoTitle">
+        音符アプリ
+      </h1>
+
+      <p>
+        音程確認・練習を目的としたアプリです。
+      </p>
+
+      <p id="infoDisclaimer">
+        本アプリの利用により生じた損害について、作者は責任を負いかねます。
+      </p>
+
+      <p id="infoCopyright">
+        © 2026 Kazutaka Hashimoto
+      </p>
+
+    </div>
+
+  </div>
+
 
 
   <!-- =====================================

@@ -658,3 +658,328 @@ body {
   color: #333;
 
 }
+
+/* =====================================
+   アプリ情報ボタン
+   ===================================== */
+
+#infoButton {
+
+  /*
+    音符画像のレイアウトには影響させず、
+    画面右上へ固定する。
+  */
+
+  position: fixed;
+
+  top: 12px;
+  right: 12px;
+
+
+  /*
+    キーコントローラーより前面、
+    音声開始オーバーレイより背面。
+  */
+
+  z-index: 300;
+
+
+  width: 34px;
+  height: 34px;
+
+  padding: 0;
+
+
+  border:
+    1px solid
+    rgba(0, 0, 0, 0.16);
+
+
+  border-radius: 50%;
+
+
+  background:
+    rgba(255, 255, 255, 0.88);
+
+
+  box-shadow:
+    0 2px 8px
+    rgba(0, 0, 0, 0.12);
+
+
+  color: #555;
+
+
+  font-size: 21px;
+
+  line-height: 1;
+
+
+  cursor: pointer;
+
+
+  touch-action: manipulation;
+
+}
+
+
+#infoButton:active {
+
+  transform:
+    scale(0.94);
+
+}
+
+
+
+/* =====================================
+   アプリ情報オーバーレイ
+   ===================================== */
+
+#infoOverlay {
+
+  /*
+    通常時は非表示
+  */
+
+  display: none;
+
+
+  position: fixed;
+
+  inset: 0;
+
+
+  /*
+    背景を少し暗くして、
+    情報ダイアログへ視線を集める。
+  */
+
+  background:
+    rgba(0, 0, 0, 0.28);
+
+
+  /*
+    演奏画面より前面、
+    音声開始オーバーレイより背面。
+  */
+
+  z-index: 5000;
+
+
+  justify-content: center;
+
+  align-items: center;
+
+
+  padding: 20px;
+
+
+  box-sizing: border-box;
+
+
+  line-height: normal;
+
+}
+
+
+
+/* =====================================
+   アプリ情報ダイアログ
+   ===================================== */
+
+#infoDialog {
+
+  position: relative;
+
+
+  width:
+    min(360px, 100%);
+
+
+  box-sizing:
+    border-box;
+
+
+  padding:
+    28px 24px
+    22px;
+
+
+  border-radius:
+    14px;
+
+
+  background:
+    rgba(255, 255, 255, 0.97);
+
+
+  box-shadow:
+    0 8px 30px
+    rgba(0, 0, 0, 0.22);
+
+
+  color:
+    #333;
+
+
+  text-align:
+    left;
+
+
+  user-select:
+    text;
+
+
+  -webkit-user-select:
+    text;
+
+}
+
+
+
+/* =====================================
+   アプリ情報 タイトル
+   ===================================== */
+
+#infoTitle {
+
+  margin:
+    0 36px
+    20px 0;
+
+
+  font-size:
+    21px;
+
+
+  font-weight:
+    bold;
+
+}
+
+
+
+/* =====================================
+   アプリ情報 本文
+   ===================================== */
+
+#infoDialog p {
+
+  margin:
+    0 0 14px;
+
+
+  font-size:
+    14px;
+
+
+  line-height:
+    1.75;
+
+}
+
+
+
+#infoDisclaimer {
+
+  color:
+    #555;
+
+}
+
+
+
+#infoCopyright {
+
+  margin-bottom:
+    0 !important;
+
+
+  color:
+    #777;
+
+
+  font-size:
+    12px !important;
+
+
+  text-align:
+    right;
+
+}
+
+
+
+/* =====================================
+   アプリ情報ダイアログ
+   閉じるボタン
+   ===================================== */
+
+#infoCloseButton {
+
+  position:
+    absolute;
+
+
+  top:
+    10px;
+
+
+  right:
+    10px;
+
+
+  width:
+    34px;
+
+
+  height:
+    34px;
+
+
+  padding:
+    0;
+
+
+  border:
+    none;
+
+
+  border-radius:
+    50%;
+
+
+  background:
+    transparent;
+
+
+  color:
+    #666;
+
+
+  font-size:
+    26px;
+
+
+  line-height:
+    1;
+
+
+  cursor:
+    pointer;
+
+
+  touch-action:
+    manipulation;
+
+}
+
+
+
+#infoCloseButton:active {
+
+  transform:
+    scale(0.92);
+
+}

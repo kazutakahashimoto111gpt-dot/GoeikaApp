@@ -1963,14 +1963,6 @@ image.addEventListener(
       ここから指またはマウスによる
       スライド演奏を開始する。
 
-
-      元コードではこの
-
-      isPointerPlaying = true;
-
-      が二重に書かれていたため、
-
-      今回1個に整理した。
     */
 
     isPointerPlaying =
@@ -2294,4 +2286,190 @@ image.addEventListener(
 
   }
 
+);
+
+// =====================================
+// アプリ情報ダイアログ
+// =====================================
+
+const infoButton =
+  document.getElementById(
+    "infoButton"
+  );
+
+
+const infoOverlay =
+  document.getElementById(
+    "infoOverlay"
+  );
+
+
+const infoDialog =
+  document.getElementById(
+    "infoDialog"
+  );
+
+
+const infoCloseButton =
+  document.getElementById(
+    "infoCloseButton"
+  );
+
+
+
+// -------------------------------------
+// アプリ情報を開く
+// -------------------------------------
+
+function openInfoDialog() {
+
+  infoOverlay.style.display =
+    "flex";
+
+
+  infoOverlay.setAttribute(
+    "aria-hidden",
+    "false"
+  );
+
+
+  /*
+    閉じるボタンへフォーカスを移し、
+    キーボード操作でも扱いやすくする。
+  */
+
+  infoCloseButton.focus();
+
+}
+
+
+
+// -------------------------------------
+// アプリ情報を閉じる
+// -------------------------------------
+
+function closeInfoDialog() {
+
+  infoOverlay.style.display =
+    "none";
+
+
+  infoOverlay.setAttribute(
+    "aria-hidden",
+    "true"
+  );
+
+}
+
+
+
+// -------------------------------------
+// 情報ボタン
+// -------------------------------------
+
+infoButton.addEventListener(
+  "click",
+
+  function(event) {
+
+    /*
+      情報ボタンの操作を
+      演奏用の操作と混同させない。
+    */
+
+    event.stopPropagation();
+
+
+    openInfoDialog();
+
+  }
+);
+
+
+
+// -------------------------------------
+// 閉じるボタン
+// -------------------------------------
+
+infoCloseButton.addEventListener(
+  "click",
+
+  function(event) {
+
+    event.stopPropagation();
+
+
+    closeInfoDialog();
+
+  }
+);
+
+
+
+// -------------------------------------
+// ダイアログの外側を押した場合
+// -------------------------------------
+
+infoOverlay.addEventListener(
+  "pointerdown",
+
+  function(event) {
+
+    /*
+      白いダイアログ部分ではなく、
+      背景部分そのものを押したときだけ閉じる。
+    */
+
+    if (
+      event.target ===
+      infoOverlay
+    ) {
+
+      closeInfoDialog();
+
+    }
+
+  }
+);
+
+
+
+// -------------------------------------
+// ダイアログ内の操作は外へ伝えない
+// -------------------------------------
+
+infoDialog.addEventListener(
+  "pointerdown",
+
+  function(event) {
+
+    event.stopPropagation();
+
+  }
+);
+
+
+
+// -------------------------------------
+// PCではEscapeキーでも閉じられる
+// -------------------------------------
+
+document.addEventListener(
+  "keydown",
+
+  function(event) {
+
+    if (
+      event.key ===
+        "Escape" &&
+
+      infoOverlay.style.display ===
+        "flex"
+    ) {
+
+      closeInfoDialog();
+
+    }
+
+  }
 );
