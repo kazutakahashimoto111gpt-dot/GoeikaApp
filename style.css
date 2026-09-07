@@ -59,6 +59,13 @@ body {
   */
   touch-action: manipulation;
 
+
+  /*
+    iPhone / iPadで長押し時に出る
+    テキスト選択用の拡大鏡やメニューを抑制する
+  */
+  -webkit-touch-callout: none;
+
 }
 
 
@@ -827,12 +834,10 @@ body {
     left;
 
 
-  user-select:
-    text;
-
-
-  -webkit-user-select:
-    text;
+  /*
+    演奏中の連続タップでテキスト選択状態にならないよう、
+    bodyの選択不可設定をそのまま使う。
+  */
 
 }
 
