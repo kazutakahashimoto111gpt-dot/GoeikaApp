@@ -467,7 +467,7 @@ body {
     width: 44px;
     height: 44px;
 
-    font-size: 25px;
+    font-size: 27px;
 
   }
 
@@ -478,7 +478,7 @@ body {
     min-width: 84px;
     height: 44px;
 
-    font-size: 16px;
+    font-size: 22px;
 
   }
 
@@ -546,6 +546,29 @@ body {
 
     transform-origin:
       center;
+
+  }
+
+
+  /*
+    縦向きスマホと同じ文字サイズにそろえる。
+
+    横向きでは画面幅が大きくなるため、
+    max-width: 600px のスマホ用指定だけでは
+    PC用の文字サイズに戻ってしまう。
+  */
+
+  #keyDown,
+  #keyUp {
+
+    font-size: 27px;
+
+  }
+
+
+  #keyDisplay {
+
+    font-size: 22px;
 
   }
 
