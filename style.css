@@ -1064,3 +1064,296 @@ body {
     scale(0.92);
 
 }
+
+
+
+/* =====================================
+   象牙調の外観と演奏操作
+   ===================================== */
+
+html,
+body {
+
+  background:
+    radial-gradient(
+      ellipse at 50% -20%,
+      #fffdf7 0%,
+      rgba(255, 253, 247, 0) 58%
+    ),
+    linear-gradient(
+      135deg,
+      #e9dfcb 0%,
+      #fbf8f0 52%,
+      #e6dcc9 100%
+    );
+
+}
+
+
+body {
+
+  color: #493b23;
+
+  /* 演奏画面ではブラウザの拡大・スクロール操作を使わせない。 */
+  touch-action: none;
+
+}
+
+
+/* 情報ダイアログを開いているときだけ、本文のスクロールを許可する。 */
+body.is-info-open {
+
+  touch-action: auto;
+
+}
+
+
+#noteImage {
+
+  -webkit-user-drag: none;
+
+  touch-action: none;
+
+}
+
+
+/* =====================================
+   押している音符の表示
+   ===================================== */
+
+#notePressMarker {
+
+  position: absolute;
+
+  box-sizing: border-box;
+
+  opacity: 0;
+
+  pointer-events: none;
+
+  z-index: 10;
+
+  border-radius: 999px;
+
+  transform:
+    translate(-50%, -50%)
+    rotate(var(--note-press-angle, 0deg));
+
+  transition:
+    opacity 70ms ease-out,
+    filter 70ms ease-out;
+
+}
+
+
+#notePressMarker.is-visible {
+
+  opacity: 1;
+
+}
+
+
+#notePressMarker.is-white {
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 247, 190, 0.88),
+      rgba(205, 148, 31, 0.70)
+    );
+
+  border:
+    1px solid
+    rgba(143, 96, 11, 0.72);
+
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    inset 0 -5px 9px rgba(117, 73, 6, 0.25),
+    0 0 10px rgba(221, 170, 39, 0.62);
+
+}
+
+
+#notePressMarker.is-black {
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 231, 128, 0.94),
+      rgba(192, 119, 10, 0.90)
+    );
+
+  border:
+    1px solid
+    rgba(255, 246, 190, 0.90);
+
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.70),
+    inset 0 -5px 9px rgba(89, 48, 3, 0.30),
+    0 0 13px rgba(235, 182, 37, 0.78);
+
+}
+
+
+#flashMarker {
+
+  z-index: 20;
+
+}
+
+
+/* =====================================
+   象牙調の操作部品
+   ===================================== */
+
+#keyControl {
+
+  border:
+    1px solid
+    rgba(133, 99, 32, 0.20);
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(255, 253, 248, 0.97),
+      rgba(232, 219, 190, 0.94)
+    );
+
+  box-shadow:
+    0 4px 12px rgba(103, 75, 26, 0.20),
+    inset 0 1px 0 rgba(255, 255, 255, 0.94),
+    inset 0 -2px 4px rgba(130, 91, 20, 0.10);
+
+}
+
+
+#keyDown,
+#keyUp {
+
+  border:
+    1px solid
+    rgba(133, 99, 32, 0.20);
+
+  background:
+    linear-gradient(
+      145deg,
+      #fffdf8,
+      #e9deca
+    );
+
+  box-shadow:
+    0 3px 7px rgba(103, 75, 26, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.90),
+    inset 0 -2px 3px rgba(145, 108, 41, 0.10);
+
+  color: #80601c;
+
+  text-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.75);
+
+}
+
+
+#keyDisplay {
+
+  border:
+    1px solid
+    rgba(133, 99, 32, 0.24);
+
+  background:
+    linear-gradient(
+      145deg,
+      #fff8e7,
+      #e7d3a0
+    );
+
+  box-shadow:
+    0 3px 7px rgba(103, 75, 26, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.88),
+    inset 0 -2px 3px rgba(128, 86, 13, 0.13);
+
+  color: #755314;
+
+  text-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.72);
+
+}
+
+
+#keyDown:active,
+#keyUp:active,
+#keyDisplay:active,
+#infoButton:active {
+
+  box-shadow:
+    inset 0 2px 5px
+    rgba(108, 72, 10, 0.20);
+
+}
+
+
+#infoButton {
+
+  border-color:
+    rgba(133, 99, 32, 0.24);
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(255, 253, 248, 0.96),
+      rgba(231, 215, 180, 0.94)
+    );
+
+  box-shadow:
+    0 3px 8px rgba(103, 75, 26, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.90);
+
+  color: #755314;
+
+}
+
+
+#infoOverlay {
+
+  background:
+    rgba(68, 48, 21, 0.34);
+
+  overflow-y: auto;
+
+  overscroll-behavior: contain;
+
+  touch-action: pan-y;
+
+}
+
+
+#infoDialog {
+
+  max-height: 100%;
+
+  overflow-y: auto;
+
+  -webkit-overflow-scrolling: touch;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(255, 253, 247, 0.98),
+      rgba(239, 229, 207, 0.98)
+    );
+
+  box-shadow:
+    0 10px 32px rgba(72, 49, 13, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.90);
+
+  color: #493b23;
+
+}
+
+
+#infoDisclaimer,
+#infoCopyright {
+
+  color: #755b2a;
+
+}

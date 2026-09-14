@@ -41,6 +41,12 @@ const flashMarker =
   );
 
 
+const notePressMarker =
+  document.getElementById(
+    "notePressMarker"
+  );
+
+
 const keyControl =
   document.getElementById(
     "keyControl"
@@ -787,6 +793,12 @@ const audioStartMessage =
 
 
 
+if (
+  audioStartOverlay &&
+  audioStartMessage
+) {
+
+
 audioStartOverlay.addEventListener(
   "pointerdown",
 
@@ -945,6 +957,8 @@ audioStartOverlay.addEventListener(
   }
 );
 
+}
+
 // ============================================
 // アプリの表示・非表示を検出
 // ============================================
@@ -963,6 +977,12 @@ document.addEventListener(
       document.visibilityState ===
         "hidden"
     ) {
+
+
+      // 画面を離れた時点で、持続音と押下表示を解除する。
+      stopSound();
+
+      hideNotePress();
 
 
       /*
@@ -1187,15 +1207,27 @@ document.addEventListener(
 
       // メッセージを初期状態へ戻す
 
-      audioStartMessage.textContent =
-        "タップして開始";
+      if (
+        audioStartMessage
+      ) {
+
+        audioStartMessage.textContent =
+          "タップして開始";
+
+      }
 
 
 
       // オーバーレイを再表示
 
-      audioStartOverlay.style.display =
-        "flex";
+      if (
+        audioStartOverlay
+      ) {
+
+        audioStartOverlay.style.display =
+          "flex";
+
+      }
 
     }
 
@@ -1209,9 +1241,47 @@ document.addEventListener(
 // 琴風サウンド
 // =====================================
 
+/*
+  現在鳴っている持続音。
+  新しい音符へ移動したとき、または指を離したときに
+  短いリリースをかけて停止する。
+*/
+
+let activeSound =
+  null;
+
+
+
+function stopSound() {
+
+  if (
+    !activeSound
+  ) {
+
+    return;
+
+  }
+
+
+  const soundToStop =
+    activeSound;
+
+
+  activeSound =
+    null;
+
+
+  soundToStop.stop();
+
+}
+
 function playSound(
   frequency
 ) {
+
+
+  // 新しい区間へ入ったときは、前の持続音を滑らかに消す。
+  stopSound();
 
 
   const now =
@@ -1244,26 +1314,14 @@ function playSound(
 
 
   /*
-    0.01秒で
-    一気に音量を上げる
+    持続音でも耳に刺さりにくいよう、
+    0.02秒で穏やかに立ち上げる。
   */
 
   masterGain.gain
     .exponentialRampToValueAtTime(
-      0.6,
-      now + 0.01
-    );
-
-
-  /*
-    その後1.8秒かけて
-    音量をほぼ0まで下げる
-  */
-
-  masterGain.gain
-    .exponentialRampToValueAtTime(
-      0.0001,
-      now + 1.8
+      0.38,
+      now + 0.02
     );
 
 
@@ -1466,25 +1524,68 @@ function playSound(
 
 
 
-  // ---------------------------------
-  // 再生終了
-  // ---------------------------------
+  /*
+    基音と倍音は、指を離すまで鳴らし続ける。
+    停止時は短いリリースでクリックノイズを防ぐ。
+  */
 
-  osc1.stop(
-    now + 1.8
-  );
-
-
-  osc2.stop(
-    now + 1.8
-  );
+  let hasStopped =
+    false;
 
 
-  osc3.stop(
-    now + 1.8
-  );
+  activeSound = {
+
+    stop() {
+
+      if (
+        hasStopped
+      ) {
+
+        return;
+
+      }
 
 
+      hasStopped =
+        true;
+
+
+      const releaseTime =
+        audioContext.currentTime;
+
+
+      masterGain.gain.cancelScheduledValues(
+        releaseTime
+      );
+
+
+      masterGain.gain.setTargetAtTime(
+        0.0001,
+        releaseTime,
+        0.02
+      );
+
+
+      osc1.stop(
+        releaseTime + 0.12
+      );
+
+
+      osc2.stop(
+        releaseTime + 0.12
+      );
+
+
+      osc3.stop(
+        releaseTime + 0.12
+      );
+
+    }
+
+  };
+
+
+  // 弦を弾いた瞬間の成分だけは短く終える。
   clickOsc.stop(
     now + 0.1
   );
@@ -1661,6 +1762,152 @@ function flash(
   同じ音符の上を動いているだけでは
   何度も鳴らさない。
 */
+
+
+// =====================================
+// 音符の押下表示
+// =====================================
+
+/*
+  渦巻き画像の25区間それぞれについて、
+  押下表示用の長さと角度を定義する。
+
+  座標の中心はnotes.jsのxRatio / yRatioを使い、
+  この情報は金色のオーバーレイを区間に沿わせるためだけに使う。
+*/
+
+const notePressLayouts = [
+  { lengthRatio: 0.122, angle: 90 },
+  { lengthRatio: 0.104, angle: 90 },
+  { lengthRatio: 0.098, angle: -45 },
+  { lengthRatio: 0.093, angle: -45 },
+  { lengthRatio: 0.071, angle: 0 },
+  { lengthRatio: 0.118, angle: 0 },
+  { lengthRatio: 0.126, angle: 45 },
+  { lengthRatio: 0.124, angle: 45 },
+  { lengthRatio: 0.135, angle: 90 },
+  { lengthRatio: 0.115, angle: 90 },
+  { lengthRatio: 0.115, angle: -45 },
+  { lengthRatio: 0.125, angle: -45 },
+  { lengthRatio: 0.120, angle: 0 },
+  { lengthRatio: 0.120, angle: 0 },
+  { lengthRatio: 0.132, angle: 45 },
+  { lengthRatio: 0.122, angle: 45 },
+  { lengthRatio: 0.145, angle: 90 },
+  { lengthRatio: 0.145, angle: 90 },
+  { lengthRatio: 0.137, angle: -45 },
+  { lengthRatio: 0.149, angle: -45 },
+  { lengthRatio: 0.154, angle: 0 },
+  { lengthRatio: 0.154, angle: 0 },
+  { lengthRatio: 0.155, angle: 45 },
+  { lengthRatio: 0.146, angle: 45 },
+  { lengthRatio: 0.150, angle: 90 }
+];
+
+
+
+let pressedNote =
+  null;
+
+
+
+function showNotePress(
+  note
+) {
+
+  const layout =
+    notePressLayouts[
+      note.no - 1
+    ];
+
+
+  if (
+    !layout ||
+    !image.offsetWidth ||
+    !image.offsetHeight
+  ) {
+
+    return;
+
+  }
+
+
+  notePressMarker.style.left =
+    `${note.xRatio * image.offsetWidth}px`;
+
+
+  notePressMarker.style.top =
+    `${note.yRatio * image.offsetHeight}px`;
+
+
+  notePressMarker.style.width =
+    `${layout.lengthRatio * image.offsetWidth}px`;
+
+
+  notePressMarker.style.height =
+    `${Math.max(18, image.offsetWidth * 0.037)}px`;
+
+
+  notePressMarker.style.setProperty(
+    "--note-press-angle",
+    `${layout.angle}deg`
+  );
+
+
+  notePressMarker.className =
+    note.no % 2 === 0
+      ? "is-visible is-white"
+      : "is-visible is-black";
+
+
+  pressedNote =
+    note;
+
+}
+
+
+
+function hideNotePress() {
+
+  notePressMarker.className =
+    "";
+
+
+  pressedNote =
+    null;
+
+}
+
+
+
+function refreshNotePress() {
+
+  if (
+    pressedNote
+  ) {
+
+    showNotePress(
+      pressedNote
+    );
+
+  }
+
+}
+
+
+
+window.addEventListener(
+  "resize",
+
+  function() {
+
+    requestAnimationFrame(
+      refreshNotePress
+    );
+
+  }
+);
+
 
 
 // =====================================
@@ -1895,6 +2142,12 @@ function playNoteAtPointer(
   ) {
 
 
+    // 区間外へ出たら、持続音と押下表示を解除する。
+    stopSound();
+
+    hideNotePress();
+
+
     /*
       いったん音符の範囲外へ
       指が出た場合は、
@@ -2008,6 +2261,12 @@ function playNoteAtPointer(
   );
 
 
+  // 押している区間を金色で表示する。
+  showNotePress(
+    nearestNote
+  );
+
+
 
   // ---------------------------------
   // 現在位置を光らせる
@@ -2040,6 +2299,31 @@ image.addEventListener(
   async function(event) {
 
 
+    /*
+      長押し時の画像メニューや連続タップ後の拡大を抑制し、
+      演奏操作として扱う。
+    */
+    event.preventDefault();
+
+
+    if (
+      activePointerId !== null &&
+      event.pointerId !== activePointerId
+    ) {
+
+      return;
+
+    }
+
+
+    activePointerId =
+      event.pointerId;
+
+
+    lastPlayedNote =
+      null;
+
+
     // ---------------------------------
     // AudioContext確認
     // ---------------------------------
@@ -2058,12 +2342,12 @@ image.addEventListener(
       );
 
 
-      audioStartMessage.textContent =
-        "もう一度タップしてください";
+      isPointerPlaying =
+        false;
 
 
-      audioStartOverlay.style.display =
-        "flex";
+      activePointerId =
+        null;
 
 
       return;
@@ -2075,6 +2359,19 @@ image.addEventListener(
     // ---------------------------------
     // スライド演奏開始
     // ---------------------------------
+
+    /*
+      音声初期化中に指が離された場合は、
+      すでに終了した操作を演奏として開始しない。
+    */
+    if (
+      event.pointerId !==
+      activePointerId
+    ) {
+
+      return;
+
+    }
 
     /*
       pointerdownが発生したので、
@@ -2188,6 +2485,76 @@ image.addEventListener(
 
 
 
+// 演奏画像上では、長押し・画像メニュー・Safari固有の拡大操作を抑制する。
+image.addEventListener(
+  "contextmenu",
+
+  function(event) {
+
+    event.preventDefault();
+
+  }
+);
+
+
+
+image.addEventListener(
+  "touchstart",
+
+  function(event) {
+
+    event.preventDefault();
+
+  },
+
+  {
+    passive: false
+  }
+);
+
+
+
+image.addEventListener(
+  "touchend",
+
+  function(event) {
+
+    event.preventDefault();
+
+  },
+
+  {
+    passive: false
+  }
+);
+
+
+
+for (
+  const eventName
+  of [
+    "gesturestart",
+    "gesturechange",
+    "gestureend",
+    "dblclick",
+    "selectstart"
+  ]
+) {
+
+  image.addEventListener(
+    eventName,
+
+    function(event) {
+
+      event.preventDefault();
+
+    }
+  );
+
+}
+
+
+
 // =====================================
 // 押したまま移動
 // =====================================
@@ -2287,6 +2654,29 @@ image.addEventListener(
 // スライド演奏終了
 // =====================================
 
+function resetPointerPlaying() {
+
+  // 指・マウスを離したら、持続音と押下表示を解除する。
+  stopSound();
+
+  hideNotePress();
+
+
+  isPointerPlaying =
+    false;
+
+
+  activePointerId =
+    null;
+
+
+  lastPlayedNote =
+    null;
+
+}
+
+
+
 function finishPointerPlaying(
   event
 ) {
@@ -2307,20 +2697,7 @@ function finishPointerPlaying(
 
 
 
-  // ---------------------------------
-  // 演奏状態を解除
-  // ---------------------------------
-
-  isPointerPlaying =
-    false;
-
-
-  activePointerId =
-    null;
-
-
-  lastPlayedNote =
-    null;
+  resetPointerPlaying();
 
 }
 
@@ -2346,6 +2723,34 @@ image.addEventListener(
   "pointercancel",
 
   finishPointerPlaying
+);
+
+
+
+/*
+  Pointer Captureが使えない環境でも、画像外で離した操作を検出して
+  持続音が残らないようにする。
+*/
+window.addEventListener(
+  "pointerup",
+
+  finishPointerPlaying
+);
+
+
+
+window.addEventListener(
+  "pointercancel",
+
+  finishPointerPlaying
+);
+
+
+
+window.addEventListener(
+  "blur",
+
+  resetPointerPlaying
 );
 
 
@@ -2390,16 +2795,7 @@ image.addEventListener(
       activePointerId
     ) {
 
-      isPointerPlaying =
-        false;
-
-
-      activePointerId =
-        null;
-
-
-      lastPlayedNote =
-        null;
+      resetPointerPlaying();
 
     }
 
@@ -2442,6 +2838,10 @@ const infoCloseButton =
 
 function openInfoDialog() {
 
+  document.body.classList.add(
+    "is-info-open"
+  );
+
   infoOverlay.style.display =
     "flex";
 
@@ -2468,6 +2868,10 @@ function openInfoDialog() {
 // -------------------------------------
 
 function closeInfoDialog() {
+
+  document.body.classList.remove(
+    "is-info-open"
+  );
 
   infoOverlay.style.display =
     "none";
