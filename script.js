@@ -1722,7 +1722,7 @@ function playNoteAtPointer(
   // ---------------------------------
 
   /*
-    横向きスマホでは、画面全体を時計回りに90度
+    横向きスマホでは、画面全体を反時計回りに90度
     回転している。
 
     clientX / clientY は回転後の画面座標なので、
@@ -1748,16 +1748,16 @@ function playNoteAtPointer(
   ) {
 
     displayX =
-      event.clientY -
-      rect.top;
+      imageWidth -
+      (
+        event.clientY -
+        rect.top
+      );
 
 
     displayY =
-      imageHeight -
-      (
-        event.clientX -
-        rect.left
-      );
+      event.clientX -
+      rect.left;
 
   }
 
