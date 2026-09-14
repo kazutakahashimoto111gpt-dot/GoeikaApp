@@ -1,0 +1,1352 @@
+/* =====================================
+   画面全体
+   ===================================== */
+
+:root {
+
+  /* JavaScriptがiPhoneの実表示高で上書きする */
+  --app-height: 100vh;
+  --app-height: 100dvh;
+
+  --compact-layout-reserved-height: 112px;
+  --portrait-content-shift: 26px;
+
+}
+
+html,
+body {
+
+  width: 100%;
+  height: 100%;
+
+  /* iPhone Safari の表示領域の高さに追従する */
+  height: var(--app-height);
+
+  margin: 0;
+  padding: 0;
+
+  overflow: hidden;
+
+  background:
+    radial-gradient(
+      ellipse at 50% -20%,
+      #fffdf7 0%,
+      rgba(255, 253, 247, 0) 58%
+    ),
+    linear-gradient(
+      135deg,
+      #ebe1ce 0%,
+      #faf7ef 52%,
+      #e8dfcf 100%
+    );
+
+}
+
+
+
+body {
+
+  display: flex;
+
+  justify-content: center;
+  align-items: center;
+
+  font-family: sans-serif;
+
+  color: #493b23;
+
+}
+
+
+
+/* =====================================
+   ブラウザ特有の挙動を抑制
+
+   ダブルタップでの選択などを
+   起こりにくくする
+   ===================================== */
+
+body {
+
+  /* 文字や要素を選択できないようにする */
+  user-select: none;
+
+
+  /*
+    Safariなど
+    WebKit系ブラウザ向け
+  */
+  -webkit-user-select: none;
+
+
+  /*
+    スマホブラウザの
+    ダブルタップなどに関連する
+    標準ジェスチャーを抑制
+  */
+  touch-action: none;
+
+}
+
+
+/* 情報ダイアログ表示中は、ダイアログ本文の縦スクロールを許可する。 */
+body.is-info-open {
+
+  touch-action: auto;
+
+}
+
+
+
+/* =====================================
+   画像エリア
+   ===================================== */
+
+#imageArea {
+
+  /*
+    absoluteで配置される子要素の
+    座標基準をここにする。
+
+    左上が
+    0, 0
+    になる。
+  */
+
+  position: relative;
+
+
+  display: flex;
+
+  flex-direction: column;
+
+  align-items: center;
+
+
+  max-width: 100vw;
+  max-height: var(--app-height);
+
+
+  /*
+    画像の下にできる
+    文字用の余白をなくす
+  */
+
+  line-height: 0;
+
+}
+
+
+
+/* =====================================
+   鍵盤画像
+
+   画面に収まる最大サイズ
+   ===================================== */
+
+#noteImage {
+
+  display: block;
+
+
+  max-width: 100vw;
+  /* キーコントローラーと余白の分を画面内に確保する */
+  max-height:
+    calc(var(--app-height) - 88px);
+
+
+  width: auto;
+  height: auto;
+
+
+  object-fit: contain;
+
+
+  /*
+    PCではマウスカーソルを
+    指カーソルにする
+  */
+
+  cursor: pointer;
+
+
+  /* 選択を防止 */
+  user-select: none;
+
+
+  /* Safari向け */
+  -webkit-user-select: none;
+
+
+  /* Safariでの画像ドラッグを抑制 */
+  -webkit-user-drag: none;
+
+
+  /*
+    iPhoneなどで
+    長押しメニューが出るのを抑制
+  */
+
+  -webkit-touch-callout: none;
+
+
+  /*
+    ダブルタップなどの
+    標準ジェスチャーを抑制
+  */
+
+  touch-action: none;
+
+}
+
+
+
+/* ===========================================
+   タップした場所の光
+
+   位置はJavaScript側で決定
+   =========================================== */
+
+/* ===========================================
+   押している鍵の表示
+
+   鍵盤画像は一枚絵のままにし、押した鍵の範囲だけへ
+   半透明のレイヤーを重ねる。
+   =========================================== */
+
+#keyPressMarker {
+
+  position: absolute;
+
+  box-sizing: border-box;
+
+  opacity: 0;
+
+  pointer-events: none;
+
+  z-index: 1;
+
+  transition:
+    opacity 70ms ease-out,
+    transform 70ms ease-out;
+
+}
+
+
+
+#keyPressMarker.is-visible {
+
+  opacity: 1;
+
+  /* 鍵が少し沈んだように見せる */
+  transform: translateY(2px);
+
+}
+
+
+
+#keyPressMarker.is-white {
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 238, 155, 0.30),
+      rgba(234, 172, 25, 0.20)
+    );
+
+  border:
+    1px solid
+    rgba(190, 126, 0, 0.45);
+
+  box-shadow:
+    inset 0 2px 0
+    rgba(255, 255, 255, 0.58),
+    inset 0 -7px 10px
+    rgba(164, 99, 0, 0.22),
+    0 2px 4px
+    rgba(120, 75, 0, 0.18);
+
+}
+
+
+
+#keyPressMarker.is-black {
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 235, 150, 0.68),
+      rgba(211, 144, 0, 0.56)
+    );
+
+  border:
+    1px solid
+    rgba(255, 242, 183, 0.82);
+
+  border-radius:
+    0 0 7px 7px;
+
+  box-shadow:
+    inset 0 2px 0
+    rgba(255, 255, 255, 0.72),
+    inset 0 -6px 8px
+    rgba(103, 60, 0, 0.40),
+    0 2px 5px
+    rgba(96, 57, 0, 0.32);
+
+}
+
+
+
+#flashMarker {
+
+  /*
+    JavaScriptから指定された
+    left / top の位置に配置する
+  */
+
+  position: absolute;
+
+  z-index: 2;
+
+
+  width: 70px;
+  height: 70px;
+
+
+  /* 円形にする */
+  border-radius: 50%;
+
+
+  /*
+    left / top は
+    要素の左上を基準にする。
+
+    translate(-50%, -50%)で
+    円の中心をタップ位置に合わせる。
+  */
+
+  transform:
+    translate(-50%, -50%);
+
+
+  /*
+    この光自身が
+    タップを邪魔しないようにする
+  */
+
+  pointer-events: none;
+
+
+  /*
+    通常時は透明。
+
+    タップ時にはJavaScriptの
+    Web Animations APIによって
+    一時的に表示される。
+  */
+
+  opacity: 0;
+
+
+  /* 円本体の色 */
+
+  background:
+    rgba(255, 220, 70, 0.65);
+
+
+  /*
+    影を3つ重ねて
+    黄色い光を表現する
+  */
+
+  box-shadow:
+
+    0 0 15px
+    rgba(255, 220, 70, 1),
+
+    0 0 35px
+    rgba(255, 200, 0, 0.8),
+
+    0 0 60px
+    rgba(255, 180, 0, 0.5);
+
+}
+
+
+
+/* =====================================
+   キー変更コントローラー
+
+   鍵盤の下へ通常レイアウトで配置する
+   ===================================== */
+
+#keyControl {
+
+  position: static;
+
+
+  display: flex;
+
+
+  flex-shrink: 0;
+
+
+  /* 縦方向の中央揃え */
+
+  align-items: center;
+
+
+  /* 子要素同士の間隔 */
+
+  gap: 10px;
+
+
+  margin-top: 16px;
+
+
+  padding: 8px 12px;
+
+
+  /* 箱の角を丸くする */
+
+  border-radius: 30px;
+
+
+  border:
+    1px solid
+    rgba(128, 94, 31, 0.24);
+
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(255, 254, 249, 0.94),
+      rgba(238, 228, 208, 0.92)
+    );
+
+
+  box-shadow:
+    0 10px 24px
+    rgba(82, 59, 20, 0.18),
+    inset 0 1px 0
+    rgba(255, 255, 255, 0.90),
+    inset 0 -1px 0
+    rgba(145, 108, 41, 0.10);
+
+
+  -webkit-backdrop-filter:
+    blur(10px);
+
+
+  backdrop-filter:
+    blur(10px);
+
+
+  /*
+    キーコントローラーを
+    他の要素より前面に出す
+  */
+
+  z-index: 100;
+
+
+  /*
+    親のimageAreaでは
+
+    line-height: 0;
+
+    になっているため、
+    ここでは文字用の行間を元に戻す。
+  */
+
+  line-height: normal;
+
+}
+
+
+
+/* =====================================
+   − と ＋
+   ===================================== */
+
+#keyDown,
+#keyUp {
+
+  width: 48px;
+  height: 48px;
+
+
+  padding: 0;
+
+
+  border:
+    1px solid
+    rgba(133, 99, 32, 0.20);
+
+
+  /* 円形にする */
+
+  border-radius: 50%;
+
+
+  background:
+    linear-gradient(
+      145deg,
+      #fffdf8,
+      #e9deca
+    );
+
+
+  box-shadow:
+    0 3px 7px
+    rgba(103, 75, 26, 0.16),
+    inset 0 1px 0
+    rgba(255, 255, 255, 0.90),
+    inset 0 -2px 3px
+    rgba(145, 108, 41, 0.10);
+
+
+  color: #80601c;
+
+
+  text-shadow:
+    0 1px 0
+    rgba(255, 255, 255, 0.75);
+
+
+  font-size: 28px;
+
+
+  cursor: pointer;
+
+
+  touch-action: manipulation;
+
+}
+
+
+
+/* =====================================
+   中央キー表示
+   ===================================== */
+
+#keyDisplay {
+
+  min-width: 92px;
+  height: 48px;
+
+
+  padding:
+    0 12px;
+
+
+  border:
+    1px solid
+    rgba(133, 99, 32, 0.24);
+
+
+  border-radius: 24px;
+
+
+  background:
+    linear-gradient(
+      145deg,
+      #fff8e7,
+      #e7d3a0
+    );
+
+
+  box-shadow:
+    0 3px 7px
+    rgba(103, 75, 26, 0.16),
+    inset 0 1px 0
+    rgba(255, 255, 255, 0.88),
+    inset 0 -2px 3px
+    rgba(128, 86, 13, 0.13);
+
+
+  color: #755314;
+
+
+  text-shadow:
+    0 1px 0
+    rgba(255, 255, 255, 0.72);
+
+
+  font-size: 28px;
+
+  font-weight: bold;
+
+
+  cursor: pointer;
+
+
+  touch-action: manipulation;
+
+}
+
+
+
+/* =====================================
+   ボタンを押したとき
+
+   少しだけ縮ませる
+   ===================================== */
+
+#keyDown:active,
+#keyUp:active,
+#keyDisplay:active {
+
+  transform:
+    scale(0.94);
+
+  box-shadow:
+    inset 0 2px 5px
+    rgba(108, 72, 10, 0.20);
+
+}
+
+
+
+/* =====================================
+   スマホ向け
+   ===================================== */
+
+@media
+(max-width: 600px) {
+
+
+  #keyControl {
+
+    gap: 7px;
+
+    padding: 6px 9px;
+
+  }
+
+
+
+  #keyDown,
+  #keyUp {
+
+    width: 44px;
+    height: 44px;
+
+    font-size: 25px;
+
+  }
+
+
+
+  #keyDisplay {
+
+    min-width: 84px;
+    height: 44px;
+
+    font-size: 16px;
+
+  }
+
+
+
+  #flashMarker {
+
+    width: 55px;
+    height: 55px;
+
+  }
+
+}
+
+
+
+/* =====================================
+   横向きの低い画面と縦持ち画面で共通の操作部品サイズ
+   ===================================== */
+
+@media
+(orientation: landscape) and
+(max-height: 500px),
+(orientation: portrait) {
+
+  #keyControl {
+
+    gap: 6px;
+
+    margin-top: 8px;
+
+    padding: 6px 9px;
+
+  }
+
+
+  #keyDown,
+  #keyUp {
+
+    width: 40px;
+    height: 40px;
+
+    font-size: 23px;
+
+  }
+
+
+  #keyDisplay {
+
+    min-width: 78px;
+    height: 40px;
+
+    font-size: 16px;
+
+  }
+
+
+  #flashMarker {
+
+    width: 55px;
+    height: 55px;
+
+  }
+
+}
+
+
+/* =====================================
+   横向き・低い画面向け
+
+   横向きのiPhoneは画面幅が600pxを超えるため、
+   上のスマホ向け指定だけでは標準サイズの
+   キーコントローラーになってしまう。
+   ===================================== */
+
+@media
+(orientation: landscape) and
+(max-height: 500px) {
+
+
+  /*
+    回転直後のiPhone Safariは、実際に見える高さより
+    大きい値でレイアウトする場合がある。
+    画像を少しだけ低くし、下のコントローラー用の
+    余裕を明示的に確保する。
+  */
+  #noteImage {
+
+    max-height:
+      calc(var(--app-height) - var(--compact-layout-reserved-height));
+
+  }
+
+
+
+  /* 鍵盤の上の余白を増やさないよう、画像エリアを上寄せにする */
+  body {
+
+    align-items: flex-start;
+
+    padding-top: 6px;
+
+    box-sizing: border-box;
+
+  }
+}
+
+
+
+/* =====================================
+   縦持ち時も横向け画面として表示
+
+   縦向けの画面幅に合わせて縮小・再配置せず、
+   アプリ全体を90度回転する。
+
+   これにより、スマホを縦に持っていても
+   横向け時と同じ幅・高さの座標系、配置、
+   操作部品をそのまま表示する。
+   ===================================== */
+
+@media
+(orientation: portrait) {
+
+
+  body {
+
+    /*
+      横向け時の幅 = 縦持ち画面の高さ
+      横向け時の高さ = 縦持ち画面の幅
+    */
+    position: fixed;
+
+    top: 50%;
+    left: 50%;
+
+    width: var(--app-height);
+    height: 100vw;
+
+    margin: 0;
+    padding-top: 6px;
+
+    box-sizing: border-box;
+
+    align-items: flex-start;
+
+    transform:
+      translate(-50%, -50%)
+      rotate(90deg);
+
+    transform-origin: center;
+
+  }
+
+
+
+  /* 横向け時と同じ利用可能領域を使う */
+  #imageArea {
+
+    max-width: var(--app-height);
+    max-height: 100vw;
+
+    /*
+      bodyを時計回りに90度回転しているため、
+      回転前の下方向への移動は縦持ち画面では左方向への移動になる。
+    */
+    transform:
+      translateY(var(--portrait-content-shift));
+
+  }
+
+
+
+  #noteImage {
+
+    max-width: var(--app-height);
+    max-height:
+      calc(100vw - var(--compact-layout-reserved-height));
+
+  }
+}
+
+
+
+/* =====================================
+   アップデート通知
+   ===================================== */
+
+#updateNotice {
+
+  /*
+    通常時は非表示。
+
+    新しいService Workerの
+    インストールが完了したときに、
+
+    JavaScriptから
+
+    display: block;
+
+    に変更される。
+  */
+
+  display: none;
+
+
+  /*
+    画面右上に固定。
+
+    音符画像の位置には
+    影響を与えない。
+  */
+
+  position: fixed;
+
+  top: 10px;
+  right: 56px;
+
+
+  /*
+    キーコントローラーなどより
+    前面に表示する。
+  */
+
+  z-index: 200;
+
+
+  /*
+    通知なので
+    小さめにしておく。
+  */
+
+  padding:
+    7px 10px;
+
+
+  /*
+    少し透明な白背景。
+  */
+
+  background:
+    rgba(255, 255, 255, 0.92);
+
+
+  /*
+    薄い枠線。
+  */
+
+  border:
+    1px solid
+    rgba(0, 0, 0, 0.15);
+
+
+  border-radius:
+    8px;
+
+
+  /*
+    少しだけ影をつけて
+    背景から見分けやすくする。
+  */
+
+  box-shadow:
+    0 2px 8px
+    rgba(0, 0, 0, 0.15);
+
+
+  /*
+    控えめな文字サイズ。
+  */
+
+  font-size:
+    12px;
+
+
+  line-height:
+    1.5;
+
+
+  color:
+    #333;
+
+
+  /*
+    通知そのものには
+    ボタンなどはない。
+
+    タップ操作を受け取る必要もない。
+  */
+
+  pointer-events:
+    none;
+
+}
+
+/* =====================================
+   音声開始用オーバーレイ
+   ===================================== */
+
+#audioStartOverlay {
+
+  /*
+    画面全体を覆う
+  */
+  position: fixed;
+
+  inset: 0;
+
+
+  /*
+    下の音符画面が見える程度に
+    薄いグレーをかける
+  */
+  background:
+    rgba(100, 100, 100, 0.25);
+
+
+  /*
+    音符などより手前に表示する
+  */
+  z-index: 10000;
+
+
+  /*
+    通常は隠し、音声開始に失敗した場合だけ
+    JavaScriptから再表示する。
+  */
+  display: none;
+
+  justify-content: center;
+
+  align-items: center;
+
+}
+
+
+#audioStartMessage {
+
+  padding: 12px 20px;
+
+  background:
+    rgba(255, 255, 255, 0.9);
+
+  border-radius: 10px;
+
+  font-size: 16px;
+
+  color: #333;
+
+}
+
+/* =====================================
+   アプリ情報ボタン
+   ===================================== */
+
+#infoButton {
+
+  /*
+    音符画像のレイアウトには影響させず、
+    画面右上へ固定する。
+  */
+
+  position: fixed;
+
+  top: 12px;
+  right: 12px;
+
+
+  /*
+    キーコントローラーより前面、
+    音声開始オーバーレイより背面。
+  */
+
+  z-index: 300;
+
+
+  width: 34px;
+  height: 34px;
+
+  padding: 0;
+
+
+  border:
+    1px solid
+    rgba(132, 97, 30, 0.28);
+
+
+  border-radius: 50%;
+
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(255, 254, 248, 0.96),
+      rgba(235, 222, 194, 0.92)
+    );
+
+
+  box-shadow:
+    0 5px 12px
+    rgba(86, 61, 17, 0.17),
+    inset 0 1px 0
+    rgba(255, 255, 255, 0.88);
+
+
+  color: #755314;
+
+
+  font-size: 21px;
+
+  line-height: 1;
+
+
+  cursor: pointer;
+
+
+  touch-action: manipulation;
+
+}
+
+
+#infoButton:active {
+
+  transform:
+    scale(0.94);
+
+  box-shadow:
+    inset 0 2px 5px
+    rgba(108, 72, 10, 0.20);
+
+}
+
+
+
+/* =====================================
+   アプリ情報オーバーレイ
+   ===================================== */
+
+#infoOverlay {
+
+  /*
+    通常時は非表示
+  */
+
+  display: none;
+
+
+  position: fixed;
+
+  inset: 0;
+
+
+  /*
+    背景を少し暗くして、
+    情報ダイアログへ視線を集める。
+  */
+
+  background:
+    rgba(0, 0, 0, 0.28);
+
+
+  /*
+    演奏画面より前面、
+    音声開始オーバーレイより背面。
+  */
+
+  z-index: 5000;
+
+
+  justify-content: center;
+
+  align-items: center;
+
+
+  padding: 20px;
+
+
+  box-sizing: border-box;
+
+
+  overflow-y: auto;
+
+
+  overscroll-behavior: contain;
+
+
+  touch-action: pan-y;
+
+
+  line-height: normal;
+
+}
+
+
+
+/* =====================================
+   アプリ情報ダイアログ
+   ===================================== */
+
+#infoDialog {
+
+  position: relative;
+
+
+  width:
+    min(360px, 100%);
+
+
+  max-height: 100%;
+
+
+  overflow-y: auto;
+
+
+  -webkit-overflow-scrolling: touch;
+
+
+  touch-action: pan-y;
+
+
+  box-sizing:
+    border-box;
+
+
+  padding:
+    28px 24px
+    22px;
+
+
+  border-radius:
+    14px;
+
+
+  background:
+    rgba(255, 255, 255, 0.97);
+
+
+  box-shadow:
+    0 8px 30px
+    rgba(0, 0, 0, 0.22);
+
+
+  color:
+    #333;
+
+
+  text-align:
+    left;
+
+
+  user-select:
+    text;
+
+
+  -webkit-user-select:
+    text;
+
+}
+
+
+
+/* =====================================
+   アプリ情報 タイトル
+   ===================================== */
+
+#infoTitle {
+
+  margin:
+    0 36px
+    20px 0;
+
+
+  font-size:
+    21px;
+
+
+  font-weight:
+    bold;
+
+}
+
+
+
+/* =====================================
+   アプリ情報 本文
+   ===================================== */
+
+#infoDialog p {
+
+  margin:
+    0 0 14px;
+
+
+  font-size:
+    14px;
+
+
+  line-height:
+    1.75;
+
+}
+
+
+
+#infoDisclaimer {
+
+  color:
+    #555;
+
+}
+
+
+
+#infoCopyright {
+
+  margin-bottom:
+    0 !important;
+
+
+  color:
+    #777;
+
+
+  font-size:
+    12px !important;
+
+
+  text-align:
+    right;
+
+}
+
+
+
+/* =====================================
+   アプリ情報ダイアログ
+   閉じるボタン
+   ===================================== */
+
+#infoCloseButton {
+
+  position:
+    absolute;
+
+
+  top:
+    10px;
+
+
+  right:
+    10px;
+
+
+  width:
+    34px;
+
+
+  height:
+    34px;
+
+
+  padding:
+    0;
+
+
+  border:
+    none;
+
+
+  border-radius:
+    50%;
+
+
+  background:
+    transparent;
+
+
+  color:
+    #666;
+
+
+  font-size:
+    26px;
+
+
+  line-height:
+    1;
+
+
+  cursor:
+    pointer;
+
+
+  touch-action:
+    manipulation;
+
+}
+
+
+
+#infoCloseButton:active {
+
+  transform:
+    scale(0.92);
+
+}
