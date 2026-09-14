@@ -1316,7 +1316,7 @@ body.is-info-open {
 #infoOverlay {
 
   background:
-    rgba(68, 48, 21, 0.34);
+    rgba(0, 0, 0, 0.28);
 
   overflow-y: auto;
 
@@ -1336,24 +1336,25 @@ body.is-info-open {
   -webkit-overflow-scrolling: touch;
 
   background:
-    linear-gradient(
-      145deg,
-      rgba(255, 253, 247, 0.98),
-      rgba(239, 229, 207, 0.98)
-    );
+    rgba(255, 255, 255, 0.97);
 
   box-shadow:
-    0 10px 32px rgba(72, 49, 13, 0.28),
-    inset 0 1px 0 rgba(255, 255, 255, 0.90);
+    0 8px 30px rgba(0, 0, 0, 0.22);
 
-  color: #493b23;
+  color: #333;
 
 }
 
 
-#infoDisclaimer,
+#infoDisclaimer {
+
+  color: #555;
+
+}
+
+
 #infoCopyright {
 
-  color: #755b2a;
+  color: #777;
 
 }
