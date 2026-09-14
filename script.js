@@ -8,6 +8,33 @@ const image =
   );
 
 
+// =====================================
+// 縦画面を回転して表示しているか
+// =====================================
+
+/*
+  CSSの横向きスマホ用メディアクエリと
+  同じ条件を使う。
+
+  画面を回転しているときは、
+  タップ座標も縦画面の座標へ戻してから
+  音符を判定する必要がある。
+*/
+
+const portraitRotationMediaQuery =
+  window.matchMedia(
+    "(orientation: landscape) and (pointer: coarse)"
+  );
+
+
+
+function isPortraitAppRotated() {
+
+  return portraitRotationMediaQuery.matches;
+
+}
+
+
 const flashMarker =
   document.getElementById(
     "flashMarker"
@@ -94,8 +121,19 @@ const hitRadiusSquared =
 // キーコントローラーの中心になる
 // =====================================
 
+/*
+  横向きでは画面幅が大きくなるため、
+  幅だけで判定するとスマホをタブレット扱いしてしまう。
+
+  短辺で判定すれば、縦向き・横向きのどちらでも
+  同じ端末区分を使える。
+*/
+
 const isSmartphone =
-  window.innerWidth <= 600;
+  Math.min(
+    window.innerWidth,
+    window.innerHeight
+  ) <= 600;
 
 
 const keyControlPosition = {
@@ -116,8 +154,21 @@ const keyControlPosition = {
 
 function updateKeyControlPosition() {
 
-  const rect =
-    image.getBoundingClientRect();
+  /*
+    getBoundingClientRect()は、
+    CSSで90度回転した後の大きさを返す。
+
+    キーコントローラーは回転前の画像エリア内で
+    配置するため、回転の影響を受けない
+    offsetWidth / offsetHeight を使う。
+  */
+
+  const imageWidth =
+    image.offsetWidth;
+
+
+  const imageHeight =
+    image.offsetHeight;
 
 
   /*
@@ -131,14 +182,14 @@ function updateKeyControlPosition() {
 
   keyControl.style.left =
     (
-      rect.width *
+      imageWidth *
       keyControlPosition.x
     ) + "px";
 
 
   keyControl.style.top =
     (
-      rect.height *
+      imageHeight *
       keyControlPosition.y
     ) + "px";
 
@@ -1667,17 +1718,61 @@ function playNoteAtPointer(
 
 
   // ---------------------------------
-  // 表示画像上の座標
+  // 縦画面基準の画像上座標
   // ---------------------------------
 
-  const displayX =
-    event.clientX -
-    rect.left;
+  /*
+    横向きスマホでは、画面全体を時計回りに90度
+    回転している。
+
+    clientX / clientY は回転後の画面座標なので、
+    音符データと同じ縦画面座標へ変換する。
+  */
+
+  const imageWidth =
+    image.offsetWidth;
 
 
-  const displayY =
-    event.clientY -
-    rect.top;
+  const imageHeight =
+    image.offsetHeight;
+
+
+  let displayX;
+
+
+  let displayY;
+
+
+  if (
+    isPortraitAppRotated()
+  ) {
+
+    displayX =
+      event.clientY -
+      rect.top;
+
+
+    displayY =
+      imageHeight -
+      (
+        event.clientX -
+        rect.left
+      );
+
+  }
+
+  else {
+
+    displayX =
+      event.clientX -
+      rect.left;
+
+
+    displayY =
+      event.clientY -
+      rect.top;
+
+  }
 
 
 
@@ -1687,12 +1782,12 @@ function playNoteAtPointer(
 
   const pointerX =
     displayX /
-    rect.width;
+    imageWidth;
 
 
   const pointerY =
     displayY /
-    rect.height;
+    imageHeight;
 
 
 
