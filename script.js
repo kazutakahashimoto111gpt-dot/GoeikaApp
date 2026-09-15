@@ -97,23 +97,24 @@ document.addEventListener(
 
 
 // =====================================
-// タップ判定半径
+// タップ判定の余白
 // =====================================
 
-const hitRadius =
-  0.05;
-
-
 /*
-  タップ地点と音符との距離を調べる
+  鍵盤そのものの幅に加える余白。
 
-  距離 <= 判定半径
-
-  かどうかを調べる
+  実際の鍵盤は細長いため、中心からの円判定では
+  長い鍵盤の端をタップすると反応しにくくなる。
+  この値は、鍵盤の中心線の周りに作る
+  カプセル形判定の半径として使う。
 */
 
-const hitRadiusSquared =
-  hitRadius * hitRadius;
+const minimumHitRadius =
+  30;
+
+
+const hitRadiusRatio =
+  0.03;
 
 
 
@@ -1806,6 +1807,108 @@ const notePressLayouts = [
 
 
 
+// =====================================
+// 鍵盤のカプセル形タップ判定
+// =====================================
+
+/*
+  鍵盤の中心線上で、タップ地点にもっとも近い点を探す。
+  中心線の両端に丸みを加えたカプセル形にすることで、
+  鍵盤の端も押しやすくしつつ余白の誤反応を抑える。
+*/
+
+function getNoteHitDistanceSquared(
+  note,
+  pointerX,
+  pointerY,
+  imageWidth,
+  imageHeight
+) {
+
+  const layout =
+    notePressLayouts[
+      note.no - 1
+    ];
+
+
+  if (!layout) {
+
+    return Infinity;
+
+  }
+
+
+  const centerX =
+    note.xRatio * imageWidth;
+
+
+  const centerY =
+    note.yRatio * imageHeight;
+
+
+  const angleRadians =
+    layout.angle * Math.PI / 180;
+
+
+  const directionX =
+    Math.cos(angleRadians);
+
+
+  const directionY =
+    Math.sin(angleRadians);
+
+
+  const halfLength =
+    layout.lengthRatio * imageWidth / 2;
+
+
+  const offsetX =
+    pointerX - centerX;
+
+
+  const offsetY =
+    pointerY - centerY;
+
+
+  const projectedLength =
+    offsetX * directionX +
+    offsetY * directionY;
+
+
+  const clampedLength =
+    Math.max(
+      -halfLength,
+      Math.min(halfLength, projectedLength)
+    );
+
+
+  const nearestX =
+    centerX +
+    directionX * clampedLength;
+
+
+  const nearestY =
+    centerY +
+    directionY * clampedLength;
+
+
+  const distanceX =
+    pointerX - nearestX;
+
+
+  const distanceY =
+    pointerY - nearestY;
+
+
+  return (
+    distanceX * distanceX +
+    distanceY * distanceY
+  );
+
+}
+
+
+
 let pressedNote =
   null;
 
@@ -2024,21 +2127,6 @@ function playNoteAtPointer(
 
 
   // ---------------------------------
-  // 0～1の比率座標に変換
-  // ---------------------------------
-
-  const pointerX =
-    displayX /
-    imageWidth;
-
-
-  const pointerY =
-    displayY /
-    imageHeight;
-
-
-
-  // ---------------------------------
   // 一番近い音符を探す準備
   // ---------------------------------
 
@@ -2061,8 +2149,18 @@ function playNoteAtPointer(
 
 
   // ---------------------------------
-  // すべての音符との距離を調べる
+  // すべての鍵盤との距離を調べる
   // ---------------------------------
+
+  const hitRadius =
+    Math.max(
+      minimumHitRadius,
+      imageWidth * hitRadiusRatio
+    );
+
+
+  const hitRadiusSquared =
+    hitRadius * hitRadius;
 
   for (
     const note
@@ -2070,40 +2168,14 @@ function playNoteAtPointer(
   ) {
 
 
-    // X方向の差
-
-    const dx =
-      pointerX -
-      note.xRatio;
-
-
-    // Y方向の差
-
-    const dy =
-      pointerY -
-      note.yRatio;
-
-
-
-    /*
-      本来の距離は
-
-      √(dx² + dy²)
-
-      だが、
-
-      一番近い音符を探すだけなら
-      平方根は必要ない。
-
-      dx² + dy²
-
-      の大小関係だけで
-      同じ結果になる。
-    */
-
     const distanceSquared =
-      dx * dx +
-      dy * dy;
+      getNoteHitDistanceSquared(
+        note,
+        displayX,
+        displayY,
+        imageWidth,
+        imageHeight
+      );
 
 
 
