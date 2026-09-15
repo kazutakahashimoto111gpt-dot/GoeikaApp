@@ -49,7 +49,7 @@
 // ====================================================
 
 const CACHE_NAME =
-  "v1.0.35";
+  "v1.0.36";
 
 
 
@@ -92,7 +92,7 @@ const FILES_TO_CACHE = [
 
   "./notes.js",
 
-  "./note.png",
+  "./note-keys-outward-sample-v5-octagon-transparent-15px-precise.png",
 
 
   // -----------------------------
