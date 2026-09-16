@@ -47,12 +47,6 @@ const notePressMarker =
   );
 
 
-const keyControl =
-  document.getElementById(
-    "keyControl"
-  );
-
-
 const keyDown =
   document.getElementById(
     "keyDown"
@@ -119,133 +113,55 @@ const hitRadiusRatio =
 
 
 // =====================================
-// キーコントローラー位置
-//
-// 画像左上 = 0, 0
-// 画像右下 = 1, 1
-//
-// この座標が
-// キーコントローラーの中心になる
-// =====================================
-
-const keyControlPosition = {
-
-  x: 0.495,
-
-  // すべての端末で画像の下に配置する。
-  y: 1.10
-
-};
-
-
-
-// =====================================
-// キーコントローラー位置更新
-// =====================================
-
-function updateKeyControlPosition() {
-
-  /*
-    getBoundingClientRect()は、
-    CSSで90度回転した後の大きさを返す。
-
-    キーコントローラーは回転前の画像エリア内で
-    配置するため、回転の影響を受けない
-    offsetWidth / offsetHeight を使う。
-  */
-
-  const imageWidth =
-    image.offsetWidth;
-
-
-  const imageHeight =
-    image.offsetHeight;
-
-
-  /*
-    imageAreaのサイズは
-    表示されている画像サイズと同じなので、
-
-    比率 × 表示画像サイズ
-
-    で位置を決定できる
-  */
-
-  keyControl.style.left =
-    (
-      imageWidth *
-      keyControlPosition.x
-    ) + "px";
-
-
-  keyControl.style.top =
-    (
-      imageHeight *
-      keyControlPosition.y
-    ) + "px";
-
-}
-
-
-
-// =========================================
-// 画像読み込み時に
-// キーコントローラーの位置設定
-// =========================================
-
-image.addEventListener(
-  "load",
-  updateKeyControlPosition
-);
-
-
-
-// ====================================================
-// 画面サイズ変更時にも
-// キーコントローラーの位置設定を再計算
-// ====================================================
-
-window.addEventListener(
-  "resize",
-  updateKeyControlPosition
-);
-
-
-
-// =============================================================
-// 画像がキャッシュ済みの場合にも
-// キーコントローラーの位置設定を再計算
-// =============================================================
-
-if (
-  image.complete
-) {
-
-  updateKeyControlPosition();
-
-}
-
-
-
-// =====================================
 // キー設定
 // =====================================
 
-let keyShift =
-  Number(
-    localStorage.getItem(
-      "kongoKeyShift"
-    )
-  );
+function loadKeyShift() {
+
+  try {
+
+    const storedValue =
+      localStorage.getItem(
+        "kongoKeyShift"
+      );
 
 
-if (
-  Number.isNaN(keyShift)
-) {
+    if (
+      storedValue === null
+    ) {
 
-  keyShift = 0;
+      return 0;
+
+    }
+
+
+    const parsedValue =
+      Number(storedValue);
+
+
+    return Number.isInteger(parsedValue)
+      ? parsedValue
+      : 0;
+
+  }
+
+  catch (error) {
+
+    console.warn(
+      "キー設定を読み込めませんでした。",
+      error
+    );
+
+
+    return 0;
+
+  }
 
 }
+
+
+let keyShift =
+  loadKeyShift();
 
 
 
@@ -333,10 +249,23 @@ function updateKeyDisplay() {
 
 function saveKeyShift() {
 
-  localStorage.setItem(
-    "kongoKeyShift",
-    keyShift
-  );
+  try {
+
+    localStorage.setItem(
+      "kongoKeyShift",
+      keyShift
+    );
+
+  }
+
+  catch (error) {
+
+    console.warn(
+      "キー設定を保存できませんでした。",
+      error
+    );
+
+  }
 
 }
 
@@ -2398,12 +2327,33 @@ image.addEventListener(
       );
 
 
-      isPointerPlaying =
-        false;
+      if (
+        event.pointerId === activePointerId
+      ) {
+
+        isPointerPlaying =
+          false;
 
 
-      activePointerId =
-        null;
+        activePointerId =
+          null;
+
+      }
+
+
+      if (
+        audioStartOverlay &&
+        audioStartMessage
+      ) {
+
+        audioStartMessage.textContent =
+          "もう一度タップしてください";
+
+
+        audioStartOverlay.style.display =
+          "flex";
+
+      }
 
 
       return;
@@ -2887,12 +2837,48 @@ const infoCloseButton =
   );
 
 
+let infoPreviouslyFocusedElement =
+  null;
+
+
+const infoBackgroundElements =
+  Array.from(
+    infoOverlay.parentElement.children
+  ).filter(
+    element => element !== infoOverlay
+  );
+
+
+function isInfoDialogOpen() {
+
+  return infoOverlay.getAttribute(
+    "aria-hidden"
+  ) === "false";
+
+}
+
+
 
 // -------------------------------------
 // アプリ情報を開く
 // -------------------------------------
 
 function openInfoDialog() {
+
+  if (
+    isInfoDialogOpen()
+  ) {
+
+    return;
+
+  }
+
+
+  infoPreviouslyFocusedElement =
+    document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null;
+
 
   document.body.classList.add(
     "is-info-open"
@@ -2906,6 +2892,17 @@ function openInfoDialog() {
     "aria-hidden",
     "false"
   );
+
+
+  for (
+    const element
+    of infoBackgroundElements
+  ) {
+
+    element.inert =
+      true;
+
+  }
 
 
   /*
@@ -2925,9 +2922,13 @@ function openInfoDialog() {
 
 function closeInfoDialog() {
 
-  document.body.classList.remove(
-    "is-info-open"
-  );
+  if (
+    !isInfoDialogOpen()
+  ) {
+
+    return;
+
+  }
 
   infoOverlay.style.display =
     "none";
@@ -2937,6 +2938,36 @@ function closeInfoDialog() {
     "aria-hidden",
     "true"
   );
+
+
+  for (
+    const element
+    of infoBackgroundElements
+  ) {
+
+    element.inert =
+      false;
+
+  }
+
+
+  document.body.classList.remove(
+    "is-info-open"
+  );
+
+
+  const focusTarget =
+    infoPreviouslyFocusedElement &&
+    infoPreviouslyFocusedElement.isConnected
+      ? infoPreviouslyFocusedElement
+      : infoButton;
+
+
+  infoPreviouslyFocusedElement =
+    null;
+
+
+  focusTarget.focus();
 
 }
 
@@ -3030,7 +3061,7 @@ infoDialog.addEventListener(
 
 
 // -------------------------------------
-// PCではEscapeキーでも閉じられる
+// Escapeで閉じ、Tabキーの移動をダイアログ内に限定する
 // -------------------------------------
 
 document.addEventListener(
@@ -3039,14 +3070,81 @@ document.addEventListener(
   function(event) {
 
     if (
-      event.key ===
-        "Escape" &&
-
-      infoOverlay.style.display ===
-        "flex"
+      !isInfoDialogOpen()
     ) {
 
+      return;
+
+    }
+
+
+    if (
+      event.key ===
+        "Escape"
+    ) {
+
+      event.preventDefault();
+
       closeInfoDialog();
+
+
+      return;
+
+    }
+
+
+    if (
+      event.key ===
+        "Tab"
+    ) {
+
+      const focusableElements =
+        infoDialog.querySelectorAll(
+          "button, [href], input, select, textarea, [tabindex]:not([tabindex='-1'])"
+        );
+
+
+      if (
+        focusableElements.length === 0
+      ) {
+
+        event.preventDefault();
+
+
+        return;
+
+      }
+
+
+      const firstElement =
+        focusableElements[0];
+
+
+      const lastElement =
+        focusableElements[
+          focusableElements.length - 1
+        ];
+
+
+      if (
+        event.shiftKey &&
+        document.activeElement === firstElement
+      ) {
+
+        event.preventDefault();
+        lastElement.focus();
+
+      }
+
+      else if (
+        !event.shiftKey &&
+        document.activeElement === lastElement
+      ) {
+
+        event.preventDefault();
+        firstElement.focus();
+
+      }
 
     }
 

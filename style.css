@@ -102,28 +102,45 @@ body {
 #imageArea {
 
   /*
-    absoluteで配置される子要素の
-    座標基準をここにする。
-
-    左上が
-    0, 0
-    になる。
+    画像とキーコントローラーを縦に並べ、
+    操作部の高さもレイアウトに含める。
   */
 
-  position: relative;
+  display: flex;
 
+  flex-direction: column;
 
-  display: inline-block;
+  align-items: center;
 
 
   max-width: 100vw;
   max-height: 100vh;
+  max-height: 100dvh;
 
 
   /*
     画像の下にできる
     文字用の余白をなくす
   */
+
+  line-height: 0;
+
+}
+
+
+
+/* 画像上の表示に使う座標基準 */
+#noteStage {
+
+  position: relative;
+
+  display: inline-block;
+
+  flex-shrink: 1;
+
+  max-width: 100%;
+  max-height: calc(100vh - 88px);
+  max-height: calc(100dvh - 88px);
 
   line-height: 0;
 
@@ -142,8 +159,9 @@ body {
   display: block;
 
 
-  max-width: 100vw;
-  max-height: 100vh;
+  max-width: 100%;
+  max-height: calc(100vh - 88px);
+  max-height: calc(100dvh - 88px);
 
 
   width: auto;
@@ -272,29 +290,12 @@ body {
 /* =====================================
    キー変更コントローラー
 
-   位置はJavaScript側で
-   画像座標から決定する
+   画像の下へ通常レイアウトで配置する
    ===================================== */
 
 #keyControl {
 
-  /*
-    3つのボタンをまとめる。
-
-    left / top は
-    JavaScriptから設定される。
-  */
-
-  position: absolute;
-
-
-  /*
-    指定座標を
-    コントローラーの中心に合わせる
-  */
-
-  transform:
-    translate(-50%, -50%);
+  position: static;
 
 
   display: flex;
@@ -308,6 +309,12 @@ body {
   /* 子要素同士の間隔 */
 
   gap: 10px;
+
+
+  flex-shrink: 0;
+
+
+  margin-top: 12px;
 
 
   padding: 8px 12px;
@@ -551,6 +558,19 @@ body {
 
 
   /*
+    回転前の論理画面は十分な高さがあるため、
+    画像は短辺の幅に合わせて縮小する。
+  */
+
+  #noteStage,
+  #noteImage {
+
+    max-height: 100%;
+
+  }
+
+
+  /*
     縦向きスマホと同じ文字サイズにそろえる。
 
     横向きでは画面幅が大きくなるため、
@@ -718,7 +738,7 @@ body {
   /*
     中央にメッセージを表示
   */
-  display: flex;
+  display: none;
 
   justify-content: center;
 

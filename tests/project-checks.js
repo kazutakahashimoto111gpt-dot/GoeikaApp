@@ -35,85 +35,41 @@ for (const relativePath of [
 const notesContext = {};
 vm.createContext(notesContext);
 new vm.Script(
-  `${readProjectFile("notes.js")}\n` +
-  "this.testNotes = notes; " +
-  "this.testKeyboardLayout = keyboardLayout;",
+  `${readProjectFile("notes.js")}\nthis.testNotes = notes;`,
   { filename: "notes.js" }
 ).runInContext(notesContext);
 
 const notes = Array.from(notesContext.testNotes);
-const keyboardLayout = notesContext.testKeyboardLayout;
 
-assert.equal(notes.length, 25, "音符は25鍵分必要です");
+assert.equal(notes.length, 25, "音符は25音分必要です");
 
 notes.forEach((note, index) => {
   const expectedFrequency = 220 * Math.pow(2, index / 12);
 
+  assert.equal(note.no, index + 1, "音符番号が連番ではありません");
+  assert.ok(
+    note.xRatio >= 0 &&
+    note.xRatio <= 1 &&
+    note.yRatio >= 0 &&
+    note.yRatio <= 1,
+    `${note.no}番目の座標が画像範囲外です`
+  );
   assert.ok(
     Math.abs(note.frequency - expectedFrequency) < 0.001,
-    `${index + 1}番目の周波数が半音階と一致しません`
+    `${note.no}番目の周波数が半音階と一致しません`
   );
 });
 
-for (const [keyType, expectedCount] of [
-  ["white", 15],
-  ["black", 10]
-]) {
-  const keyIndexes = notes
-    .filter(note => note.keyType === keyType)
-    .map(note => note.keyIndex);
-
-  assert.equal(
-    keyIndexes.length,
-    expectedCount,
-    `${keyType}鍵の数が正しくありません`
-  );
-
-  assert.deepEqual(
-    keyIndexes,
-    Array.from({ length: expectedCount }, (_, index) => index),
-    `${keyType}鍵のkeyIndexが連番ではありません`
-  );
-}
-
-for (const [areaName, expectedCount] of [
-  ["whiteKeyAreas", 15],
-  ["blackKeyAreas", 10],
-  ["nonPlayableBlackKeyAreas", 2]
-]) {
-  const areas = Array.from(keyboardLayout[areaName]);
-
-  assert.equal(
-    areas.length,
-    expectedCount,
-    `${areaName}の領域数が正しくありません`
-  );
-
-  areas.forEach((area, index) => {
-    assert.ok(
-      area.left >= 0 &&
-      area.right <= 1 &&
-      area.left < area.right,
-      `${areaName}[${index}]の範囲が正しくありません`
-    );
-  });
-}
-
-const pngBuffer = fs.readFileSync(
-  path.join(projectRoot, "keyboard-chart.png")
+const script = readProjectFile("script.js");
+const notePressLayoutsMatch = script.match(
+  /const notePressLayouts = \[([\s\S]*?)\];/
 );
-const pngWidth = pngBuffer.readUInt32BE(16);
-const pngHeight = pngBuffer.readUInt32BE(20);
 
+assert.ok(notePressLayoutsMatch, "押下表示データが見つかりません");
 assert.equal(
-  pngWidth,
-  keyboardLayout.imageWidth,
-  "鍵盤画像の幅と鍵判定データが一致しません"
-);
-assert.equal(
-  pngHeight,
-  keyboardLayout.imageHeight,
-  "鍵盤画像の高さと鍵判定データが一致しません"
+  (notePressLayoutsMatch[1].match(/lengthRatio/g) || []).length,
+  notes.length,
+  "音符数と押下表示データ数が一致しません"
 );
 
 const indexHtml = readProjectFile("index.html");
@@ -131,6 +87,40 @@ localAssetPaths.forEach(assetPath => {
   );
 });
 
+const htmlIds = new Set(
+  Array.from(
+    indexHtml.matchAll(/id="([^"]+)"/g),
+    match => match[1]
+  )
+);
+
+for (const match of script.matchAll(
+  /getElementById\(\s*"([^"]+)"\s*\)/g
+)) {
+  assert.ok(
+    htmlIds.has(match[1]),
+    `JavaScriptが参照する#${match[1]}がHTMLにありません`
+  );
+}
+
+assert.ok(
+  indexHtml.indexOf('id="noteStage"') <
+  indexHtml.indexOf('id="keyControl"'),
+  "キーコントローラーが画像の後に配置されていません"
+);
+
+const style = readProjectFile("style.css");
+const keyControlRule = style.match(
+  /#keyControl\s*\{([\s\S]*?)\}/
+);
+
+assert.ok(keyControlRule, "キーコントローラーのCSSがありません");
+assert.match(
+  keyControlRule[1],
+  /position:\s*static/,
+  "キーコントローラーが通常レイアウトではありません"
+);
+
 const manifest = JSON.parse(readProjectFile("manifest.json"));
 const themeColorMatch = indexHtml.match(
   /name="theme-color"[\s\S]*?content="([^"]+)"/
@@ -147,6 +137,7 @@ assert.equal(
   manifest.theme_color,
   "PWAの背景色とテーマ色が一致しません"
 );
+assert.equal(manifest.start_url, "./", "PWAの開始URLがルートではありません");
 
 const serviceWorker = readProjectFile("sw.js");
 const precacheBlockMatch = serviceWorker.match(
@@ -165,13 +156,14 @@ assert.equal(
   precachePaths.length,
   "FILES_TO_CACHEに重複があります"
 );
-assert.ok(
-  precachePaths.includes("./icons/favicon-48.png"),
-  "faviconが事前キャッシュに含まれていません"
-);
+assert.ok(precachePaths.includes("./"), "ルートHTMLが事前キャッシュされません");
 assert.ok(
   !precachePaths.includes("./index.html"),
   "ルートHTMLを二重に事前キャッシュしています"
+);
+assert.ok(
+  precachePaths.includes("./icons/favicon-48.png"),
+  "faviconが事前キャッシュに含まれていません"
 );
 
 precachePaths
@@ -185,10 +177,20 @@ precachePaths
     );
   });
 
-assert.equal(
-  manifest.start_url,
-  "./",
-  "PWAの開始URLと事前キャッシュするルートURLが一致しません"
+assert.match(
+  serviceWorker,
+  /CACHEABLE_URLS\.has\(\s*event\.request\.url\s*\)/,
+  "動的キャッシュ対象が制限されていません"
+);
+assert.match(
+  serviceWorker,
+  /return caches\.open\(/,
+  "動的キャッシュ保存の完了を待っていません"
+);
+assert.match(
+  serviceWorker,
+  /return cache\.put\(/,
+  "cache.putの完了を待っていません"
 );
 
 console.log("Project checks passed.");

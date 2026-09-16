@@ -49,7 +49,7 @@
 // ====================================================
 
 const CACHE_NAME =
-  "v1.0.39";
+  "v1.0.40";
 
 
 
@@ -82,8 +82,6 @@ const FILES_TO_CACHE = [
 
   "./",
 
-  "./index.html",
-
   "./style.css",
 
   "./script.js",
@@ -93,6 +91,8 @@ const FILES_TO_CACHE = [
   "./notes.js",
 
   "./note-keys-outward-sample-v5-octagon-transparent-15px-precise.png",
+
+  "./icons/favicon-48.png",
 
 
   // -----------------------------
@@ -106,6 +106,22 @@ const FILES_TO_CACHE = [
   "./icons/apple-touch-icon.png"
 
 ];
+
+
+/*
+  実行時にキャッシュへ保存してよいURLを、
+  事前キャッシュ対象だけに限定する。
+*/
+const CACHEABLE_URLS =
+  new Set(
+    FILES_TO_CACHE.map(
+      filePath =>
+        new URL(
+          filePath,
+          self.location.href
+        ).href
+    )
+  );
 
 
 
@@ -422,8 +438,8 @@ self.addEventListener(
               if (
                 networkResponse &&
                 networkResponse.status === 200 &&
-                event.request.url.startsWith(
-                  self.location.origin
+                CACHEABLE_URLS.has(
+                  event.request.url
                 )
               ) {
 
@@ -453,7 +469,7 @@ self.addEventListener(
                 // 現在のキャッシュを開く
                 // -----------------------------
 
-                caches.open(
+                return caches.open(
                   CACHE_NAME
                 )
 
@@ -473,13 +489,28 @@ self.addEventListener(
                       すぐ取得できるようになる。
                     */
 
-                    cache.put(
+                    return cache.put(
                       event.request,
                       responseClone
                     );
 
 
-                  });
+                  })
+
+
+                  .catch(error => {
+
+                    console.warn(
+                      "取得したファイルをキャッシュへ保存できませんでした。",
+                      error
+                    );
+
+                  })
+
+
+                  .then(() =>
+                    networkResponse
+                  );
 
 
               }

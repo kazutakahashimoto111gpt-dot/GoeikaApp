@@ -80,6 +80,17 @@
 
 <body>
 
+  <!-- 音声の再開が必要な場合に表示する案内 -->
+  <div id="audioStartOverlay">
+    <div
+      id="audioStartMessage"
+      aria-live="polite"
+    >
+      タップして開始
+    </div>
+  </div>
+
+
   <!-- =====================================
        縦画面コンテナ
 
@@ -95,32 +106,36 @@
 
   <div id="imageArea">
 
-    <img
-      id="noteImage"
-      src="note-keys-outward-sample-v5-octagon-transparent-15px-precise.png"
-      alt="音符図"
-      draggable="false"
-    >
+    <!-- 画像と画像上の表示だけを同じ座標系にまとめる -->
+    <div id="noteStage">
+
+      <img
+        id="noteImage"
+        src="note-keys-outward-sample-v5-octagon-transparent-15px-precise.png"
+        alt="音符図"
+        draggable="false"
+      >
 
 
-    <!-- 押している音符の表示 -->
-    <div id="notePressMarker"></div>
+      <!-- 押している音符の表示 -->
+      <div id="notePressMarker"></div>
 
 
 
-    <!-- =====================================
-         タップ位置の光
-         ===================================== -->
+      <!-- =====================================
+           タップ位置の光
+           ===================================== -->
 
-    <div id="flashMarker"></div>
+      <div id="flashMarker"></div>
+
+    </div>
 
 
 
     <!-- =====================================
          キー変更コントローラー
 
-         画像の上に重ねるため
-         imageAreaの中に入れてある
+         画像の下へ通常レイアウトで配置する
          ===================================== -->
 
     <div id="keyControl">

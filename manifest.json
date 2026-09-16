@@ -4,7 +4,7 @@
   "short_name": "音符",
   "description": "音符アプリ",
   "id": "/GoeikaApp/",
-  "start_url": "./index.html",
+  "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "background_color": "#ffffff",
