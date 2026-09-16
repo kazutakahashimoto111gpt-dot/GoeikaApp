@@ -73,6 +73,40 @@ assert.equal(
 );
 
 const indexHtml = readProjectFile("index.html");
+
+assert.ok(
+  !indexHtml.includes('id="audioStartOverlay"'),
+  "音声開始専用のオーバーレイが残っています"
+);
+
+assert.ok(
+  !script.includes("audioStartOverlay") &&
+  !script.includes("audioStartMessage"),
+  "音声開始専用の処理が残っています"
+);
+
+const pointerDownIndex = script.indexOf(
+  'image.addEventListener(\n  "pointerdown"'
+);
+const ensureAudioIndex = script.indexOf(
+  "await ensureAudioContext()",
+  pointerDownIndex
+);
+const playPointerIndex = script.indexOf(
+  "playNoteAtPointer(",
+  ensureAudioIndex
+);
+
+assert.ok(pointerDownIndex >= 0, "画像のpointerdown処理がありません");
+assert.ok(
+  ensureAudioIndex > pointerDownIndex,
+  "最初の画像タップでAudioContextを開始していません"
+);
+assert.ok(
+  playPointerIndex > ensureAudioIndex,
+  "AudioContext開始後に最初のタップを演奏していません"
+);
+
 const localAssetPaths = Array.from(
   indexHtml.matchAll(/(?:src|href)="([^"#]+)"/g),
   match => match[1]
