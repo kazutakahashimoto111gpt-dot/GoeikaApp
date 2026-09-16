@@ -128,28 +128,12 @@ const hitRadiusRatio =
 // キーコントローラーの中心になる
 // =====================================
 
-/*
-  横向きでは画面幅が大きくなるため、
-  幅だけで判定するとスマホをタブレット扱いしてしまう。
-
-  短辺で判定すれば、縦向き・横向きのどちらでも
-  同じ端末区分を使える。
-*/
-
-const isSmartphone =
-  Math.min(
-    window.innerWidth,
-    window.innerHeight
-  ) <= 600;
-
-
 const keyControlPosition = {
 
   x: 0.495,
 
-  y: isSmartphone
-    ? 1.10   // スマホ
-    : 0.927  // PC・タブレット
+  // すべての端末で画像の下に配置する。
+  y: 1.10
 
 };
 
