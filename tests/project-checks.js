@@ -74,6 +74,22 @@ assert.equal(
 
 const indexHtml = readProjectFile("index.html");
 
+assert.match(
+  indexHtml,
+  /<button\s+id="updateNotice"\s+type="button"\s*>/,
+  "更新通知が操作可能なボタンではありません"
+);
+assert.match(
+  indexHtml,
+  /waitingWorker\.postMessage\(\{\s*type: "SKIP_WAITING"\s*\}\)/,
+  "更新通知からwaiting中のService Workerを有効化していません"
+);
+assert.match(
+  indexHtml,
+  /"controllerchange"[\s\S]*?window\.location\.reload\(\)/,
+  "Service Workerの切替後に画面を再読み込みしていません"
+);
+
 assert.ok(
   !indexHtml.includes('id="audioStartOverlay"'),
   "音声開始専用のオーバーレイが残っています"
@@ -174,6 +190,11 @@ assert.equal(
 assert.equal(manifest.start_url, "./", "PWAの開始URLがルートではありません");
 
 const serviceWorker = readProjectFile("sw.js");
+assert.match(
+  serviceWorker,
+  /"message"[\s\S]*?"SKIP_WAITING"[\s\S]*?self\.skipWaiting\(\)/,
+  "Service Workerが即時有効化メッセージを処理していません"
+);
 const precacheBlockMatch = serviceWorker.match(
   /const FILES_TO_CACHE = \[([\s\S]*?)\];/
 );

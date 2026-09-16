@@ -4,16 +4,12 @@
 <head>
 
   <meta charset="UTF-8">
-  <!--
-    演奏画面では連続タップを頻繁に行うため、
-    ダブルタップによるブラウザ標準のページ拡大を抑止する。
-  -->
   <meta
     name="viewport"
-    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no"
   >
 
-  <title>音符アプリ</title>
+  <title>音符アプリ with H.K.</title>
 
 
   <!-- =====================================
@@ -35,7 +31,7 @@
   <!-- Webサイトのテーマカラー -->
   <meta
     name="theme-color"
-    content="#ffffff"
+    content="#f5f0e6"
   >
 
 
@@ -54,7 +50,7 @@
        アイコン下に表示される名前 -->
   <meta
     name="apple-mobile-web-app-title"
-    content="音符"
+    content="音符 with H.K."
   >
 
   <!-- iPhone / Safari向け -->
@@ -81,50 +77,48 @@
 <body>
 
   <!-- =====================================
-       縦画面コンテナ
+     音声開始用オーバーレイ
+     ===================================== -->
 
-       スマホ横向き時にはCSSで90度回転し、
-       縦向きの画面として表示を維持する。
-       ===================================== -->
+  <div id="audioStartOverlay">
+    <div id="audioStartMessage">
+      タップして開始
+    </div>
+  </div>
 
-  <div id="portraitApp">
 
   <!-- =====================================
-       音符画像エリア
+       鍵盤画像エリア
        ===================================== -->
 
   <div id="imageArea">
 
-    <!-- 画像と画像上の表示だけを同じ座標系にまとめる -->
-    <div id="noteStage">
-
-      <img
-        id="noteImage"
-        src="note-keys-outward-sample-v5-octagon-transparent-15px-precise.png"
-        alt="音符図"
-        draggable="false"
-      >
-
-
-      <!-- 押している音符の表示 -->
-      <div id="notePressMarker"></div>
+    <img
+      id="noteImage"
+      src="keyboard-chart.png"
+      alt="初黄から十一までの25鍵の鍵盤図"
+      draggable="false"
+    >
 
 
 
-      <!-- =====================================
-           タップ位置の光
-           ===================================== -->
+    <!-- =====================================
+         鍵の押下表示とタップ位置の光
+         ===================================== -->
 
-      <div id="flashMarker"></div>
+    <div id="keyPressMarker"></div>
 
-    </div>
+
+    <div id="flashMarker"></div>
 
 
 
     <!-- =====================================
          キー変更コントローラー
 
-         画像の下へ通常レイアウトで配置する
+         鍵盤の下へ配置し、
+         まとめてレイアウトするため
+         imageAreaの中に入れてある
          ===================================== -->
 
     <div id="keyControl">
@@ -209,7 +203,7 @@
       </button>
 
       <h1 id="infoTitle">
-        音符アプリ
+        音符アプリ with H.K.
       </h1>
 
       <p>
@@ -260,9 +254,6 @@
     タップして更新
 
   </button>
-
-
-  </div>
 
 
 
@@ -330,6 +321,7 @@
             false;
 
 
+
           console.log(
             "Service Workerを登録しました"
           );
@@ -341,6 +333,7 @@
           // =================================
 
           function showUpdateNotice() {
+
 
             /*
               更新通知を表示する。

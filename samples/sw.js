@@ -49,7 +49,7 @@
 // ====================================================
 
 const CACHE_NAME =
-  "v1.0.42";
+  "v2.0.63";
 
 
 
@@ -90,7 +90,7 @@ const FILES_TO_CACHE = [
 
   "./notes.js",
 
-  "./note-keys-outward-sample-v5-octagon-transparent-15px-precise.png",
+  "./keyboard-chart.png",
 
   "./icons/favicon-48.png",
 
@@ -106,22 +106,6 @@ const FILES_TO_CACHE = [
   "./icons/apple-touch-icon.png"
 
 ];
-
-
-/*
-  実行時にキャッシュへ保存してよいURLを、
-  事前キャッシュ対象だけに限定する。
-*/
-const CACHEABLE_URLS =
-  new Set(
-    FILES_TO_CACHE.map(
-      filePath =>
-        new URL(
-          filePath,
-          self.location.href
-        ).href
-    )
-  );
 
 
 
@@ -172,7 +156,7 @@ self.addEventListener(
 
             たとえば、
 
-            index.html
+            ルートHTML
             style.css
             script.js
 
@@ -319,6 +303,11 @@ self.addEventListener(
         })
 
 
+        .then(() =>
+          clients.claim()
+        )
+
+
     );
 
   }
@@ -381,20 +370,30 @@ self.addEventListener(
     // キャッシュ優先で取得
     // =====================================
 
+    /*
+      HTMLの入口は「./」へ統一する。
+      既存のインストールがindex.htmlを開始URLとして保持していても、
+      ナビゲーションでは同じルートHTMLを返す。
+    */
+    const cacheRequest =
+      event.request.mode === "navigate"
+        ? "./"
+        : event.request;
+
     event.respondWith(
 
 
       /*
         まず、
 
-        「このリクエストと同じものが
-          キャッシュに保存されているか？」
+          「このリクエストに対応するものが
+            キャッシュに保存されているか？」
 
         を調べる。
       */
 
       caches.match(
-        event.request
+        cacheRequest
       )
 
 
@@ -466,8 +465,8 @@ self.addEventListener(
               if (
                 networkResponse &&
                 networkResponse.status === 200 &&
-                CACHEABLE_URLS.has(
-                  event.request.url
+                event.request.url.startsWith(
+                  self.location.origin
                 )
               ) {
 

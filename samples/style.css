@@ -2,18 +2,43 @@
    画面全体
    ===================================== */
 
+:root {
+
+  /* JavaScriptがiPhoneの実表示高で上書きする */
+  --app-height: 100vh;
+  --app-height: 100dvh;
+
+  --compact-layout-reserved-height: 112px;
+  --portrait-content-shift: 26px;
+
+}
+
 html,
 body {
 
   width: 100%;
   height: 100%;
 
+  /* iPhone Safari の表示領域の高さに追従する */
+  height: var(--app-height);
+
   margin: 0;
   padding: 0;
 
   overflow: hidden;
 
-  background: white;
+  background:
+    radial-gradient(
+      ellipse at 50% -20%,
+      #fffdf7 0%,
+      rgba(255, 253, 247, 0) 58%
+    ),
+    linear-gradient(
+      135deg,
+      #ebe1ce 0%,
+      #faf7ef 52%,
+      #e8dfcf 100%
+    );
 
 }
 
@@ -28,30 +53,7 @@ body {
 
   font-family: sans-serif;
 
-}
-
-
-
-/* =====================================
-   縦画面コンテナ
-
-   通常時は画面全体を使う。
-   横向きのスマホでは、このコンテナだけを
-   90度回転して縦画面として扱う。
-   ===================================== */
-
-#portraitApp {
-
-  position: relative;
-
-  width: 100%;
-  height: 100%;
-
-
-  display: flex;
-
-  justify-content: center;
-  align-items: center;
+  color: #493b23;
 
 }
 
@@ -82,14 +84,15 @@ body {
     ダブルタップなどに関連する
     標準ジェスチャーを抑制
   */
-  touch-action: manipulation;
+  touch-action: none;
+
+}
 
 
-  /*
-    iPhone / iPadで長押し時に出る
-    テキスト選択用の拡大鏡やメニューを抑制する
-  */
-  -webkit-touch-callout: none;
+/* 情報ダイアログ表示中は、ダイアログ本文の縦スクロールを許可する。 */
+body.is-info-open {
+
+  touch-action: auto;
 
 }
 
@@ -102,9 +105,16 @@ body {
 #imageArea {
 
   /*
-    画像とキーコントローラーを縦に並べ、
-    操作部の高さもレイアウトに含める。
+    absoluteで配置される子要素の
+    座標基準をここにする。
+
+    左上が
+    0, 0
+    になる。
   */
+
+  position: relative;
+
 
   display: flex;
 
@@ -114,8 +124,7 @@ body {
 
 
   max-width: 100vw;
-  max-height: 100vh;
-  max-height: 100dvh;
+  max-height: var(--app-height);
 
 
   /*
@@ -129,27 +138,8 @@ body {
 
 
 
-/* 画像上の表示に使う座標基準 */
-#noteStage {
-
-  position: relative;
-
-  display: inline-block;
-
-  flex-shrink: 1;
-
-  max-width: 100%;
-  max-height: calc(100vh - 88px);
-  max-height: calc(100dvh - 88px);
-
-  line-height: 0;
-
-}
-
-
-
 /* =====================================
-   音符画像
+   鍵盤画像
 
    画面に収まる最大サイズ
    ===================================== */
@@ -159,9 +149,10 @@ body {
   display: block;
 
 
-  max-width: 100%;
-  max-height: calc(100vh - 88px);
-  max-height: calc(100dvh - 88px);
+  max-width: 100vw;
+  /* キーコントローラーと余白の分を画面内に確保する */
+  max-height:
+    calc(var(--app-height) - 88px);
 
 
   width: auto;
@@ -187,6 +178,10 @@ body {
   -webkit-user-select: none;
 
 
+  /* Safariでの画像ドラッグを抑制 */
+  -webkit-user-drag: none;
+
+
   /*
     iPhoneなどで
     長押しメニューが出るのを抑制
@@ -200,7 +195,7 @@ body {
     標準ジェスチャーを抑制
   */
 
-  touch-action: manipulation;
+  touch-action: none;
 
 }
 
@@ -212,6 +207,97 @@ body {
    位置はJavaScript側で決定
    =========================================== */
 
+/* ===========================================
+   押している鍵の表示
+
+   鍵盤画像は一枚絵のままにし、押した鍵の範囲だけへ
+   半透明のレイヤーを重ねる。
+   =========================================== */
+
+#keyPressMarker {
+
+  position: absolute;
+
+  box-sizing: border-box;
+
+  opacity: 0;
+
+  pointer-events: none;
+
+  z-index: 1;
+
+  transition:
+    opacity 70ms ease-out,
+    transform 70ms ease-out;
+
+}
+
+
+
+#keyPressMarker.is-visible {
+
+  opacity: 1;
+
+  /* 鍵が少し沈んだように見せる */
+  transform: translateY(2px);
+
+}
+
+
+
+#keyPressMarker.is-white {
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 238, 155, 0.30),
+      rgba(234, 172, 25, 0.20)
+    );
+
+  border:
+    1px solid
+    rgba(190, 126, 0, 0.45);
+
+  box-shadow:
+    inset 0 2px 0
+    rgba(255, 255, 255, 0.58),
+    inset 0 -7px 10px
+    rgba(164, 99, 0, 0.22),
+    0 2px 4px
+    rgba(120, 75, 0, 0.18);
+
+}
+
+
+
+#keyPressMarker.is-black {
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 235, 150, 0.68),
+      rgba(211, 144, 0, 0.56)
+    );
+
+  border:
+    1px solid
+    rgba(255, 242, 183, 0.82);
+
+  border-radius:
+    0 0 7px 7px;
+
+  box-shadow:
+    inset 0 2px 0
+    rgba(255, 255, 255, 0.72),
+    inset 0 -6px 8px
+    rgba(103, 60, 0, 0.40),
+    0 2px 5px
+    rgba(96, 57, 0, 0.32);
+
+}
+
+
+
 #flashMarker {
 
   /*
@@ -220,6 +306,8 @@ body {
   */
 
   position: absolute;
+
+  z-index: 2;
 
 
   width: 70px;
@@ -290,7 +378,7 @@ body {
 /* =====================================
    キー変更コントローラー
 
-   画像の下へ通常レイアウトで配置する
+   鍵盤の下へ通常レイアウトで配置する
    ===================================== */
 
 #keyControl {
@@ -299,6 +387,9 @@ body {
 
 
   display: flex;
+
+
+  flex-shrink: 0;
 
 
   /* 縦方向の中央揃え */
@@ -311,10 +402,7 @@ body {
   gap: 10px;
 
 
-  flex-shrink: 0;
-
-
-  margin-top: 12px;
+  margin-top: 16px;
 
 
   padding: 8px 12px;
@@ -325,13 +413,34 @@ body {
   border-radius: 30px;
 
 
+  border:
+    1px solid
+    rgba(128, 94, 31, 0.24);
+
+
   background:
-    rgba(255, 255, 255, 0.92);
+    linear-gradient(
+      145deg,
+      rgba(255, 254, 249, 0.94),
+      rgba(238, 228, 208, 0.92)
+    );
 
 
   box-shadow:
-    0 2px 10px
-    rgba(0, 0, 0, 0.20);
+    0 10px 24px
+    rgba(82, 59, 20, 0.18),
+    inset 0 1px 0
+    rgba(255, 255, 255, 0.90),
+    inset 0 -1px 0
+    rgba(145, 108, 41, 0.10);
+
+
+  -webkit-backdrop-filter:
+    blur(10px);
+
+
+  backdrop-filter:
+    blur(10px);
 
 
   /*
@@ -371,7 +480,9 @@ body {
   padding: 0;
 
 
-  border: none;
+  border:
+    1px solid
+    rgba(133, 99, 32, 0.20);
 
 
   /* 円形にする */
@@ -380,7 +491,28 @@ body {
 
 
   background:
-    #eeeeee;
+    linear-gradient(
+      145deg,
+      #fffdf8,
+      #e9deca
+    );
+
+
+  box-shadow:
+    0 3px 7px
+    rgba(103, 75, 26, 0.16),
+    inset 0 1px 0
+    rgba(255, 255, 255, 0.90),
+    inset 0 -2px 3px
+    rgba(145, 108, 41, 0.10);
+
+
+  color: #80601c;
+
+
+  text-shadow:
+    0 1px 0
+    rgba(255, 255, 255, 0.75);
 
 
   font-size: 28px;
@@ -409,14 +541,37 @@ body {
     0 12px;
 
 
-  border: none;
+  border:
+    1px solid
+    rgba(133, 99, 32, 0.24);
 
 
   border-radius: 24px;
 
 
   background:
-    #eeeeee;
+    linear-gradient(
+      145deg,
+      #fff8e7,
+      #e7d3a0
+    );
+
+
+  box-shadow:
+    0 3px 7px
+    rgba(103, 75, 26, 0.16),
+    inset 0 1px 0
+    rgba(255, 255, 255, 0.88),
+    inset 0 -2px 3px
+    rgba(128, 86, 13, 0.13);
+
+
+  color: #755314;
+
+
+  text-shadow:
+    0 1px 0
+    rgba(255, 255, 255, 0.72);
 
 
   font-size: 28px;
@@ -446,6 +601,10 @@ body {
   transform:
     scale(0.94);
 
+  box-shadow:
+    inset 0 2px 5px
+    rgba(108, 72, 10, 0.20);
+
 }
 
 
@@ -474,7 +633,7 @@ body {
     width: 44px;
     height: 44px;
 
-    font-size: 27px;
+    font-size: 25px;
 
   }
 
@@ -485,7 +644,7 @@ body {
     min-width: 84px;
     height: 44px;
 
-    font-size: 22px;
+    font-size: 16px;
 
   }
 
@@ -503,95 +662,191 @@ body {
 
 
 /* =====================================
-   スマホ・タブレットの横向き表示
+   横向きの低い画面と幅の狭い縦持ち画面で共通の操作部品サイズ
    ===================================== */
 
 @media
-  (orientation: landscape) and
-  (pointer: coarse) {
+(orientation: landscape) and
+(max-height: 500px),
+(orientation: portrait) and
+(max-width: 600px) {
 
+  #keyControl {
 
-  /*
-    coarse は
+    gap: 6px;
 
-    マウスのような細かい入力ではなく、
-    指のようなタッチ入力を意味する。
+    margin-top: 8px;
 
-  スマホ・タブレットを横向きにした場合は、
-  縦画面コンテナを90度回転して表示する。
-
-  回転後のコンテナは、
-
-    幅 = 画面の高さ
-    高さ = 画面の幅
-
-  とすることで、縦向きの画面サイズを保つ。
-  */
-
-  #portraitApp {
-
-    position: fixed;
-
-    top: 50%;
-    left: 50%;
-
-
-    /* 古いブラウザ向けのフォールバック */
-    width: 100vh;
-    height: 100vw;
-
-
-    /* ブラウザUIの表示・非表示にも追従する単位 */
-    width: 100dvh;
-    height: 100dvw;
-
-
-    transform:
-      translate(-50%, -50%)
-      rotate(-90deg);
-
-
-    transform-origin:
-      center;
+    padding: 6px 9px;
 
   }
 
-
-  /*
-    回転前の論理画面は十分な高さがあるため、
-    画像は短辺の幅に合わせて縮小する。
-  */
-
-  #noteStage,
-  #noteImage {
-
-    max-height: 100%;
-
-  }
-
-
-  /*
-    縦向きスマホと同じ文字サイズにそろえる。
-
-    横向きでは画面幅が大きくなるため、
-    max-width: 600px のスマホ用指定だけでは
-    PC用の文字サイズに戻ってしまう。
-  */
 
   #keyDown,
   #keyUp {
 
-    font-size: 27px;
+    width: 40px;
+    height: 40px;
+
+    font-size: 23px;
 
   }
 
 
   #keyDisplay {
 
-    font-size: 22px;
+    min-width: 78px;
+    height: 40px;
+
+    font-size: 16px;
 
   }
 
+
+  #flashMarker {
+
+    width: 55px;
+    height: 55px;
+
+  }
+
+}
+
+
+/* =====================================
+   iPadなど幅の広い縦持ち画面
+
+   bodyを90度回転しているため、回転前の下方向への移動は
+   画面上では左方向への移動になる。iPad縦持ちでは全体が
+   右寄りに見えるため、iPhoneより26px左へ補正する。
+   ===================================== */
+
+@media
+(orientation: portrait) and
+(min-width: 601px) {
+
+  :root {
+
+    --portrait-content-shift: 97px;
+
+  }
+
+}
+
+
+
+/* =====================================
+   横向き・低い画面向け
+
+   横向きのiPhoneは画面幅が600pxを超えるため、
+   上のスマホ向け指定だけでは標準サイズの
+   キーコントローラーになってしまう。
+   ===================================== */
+
+@media
+(orientation: landscape) and
+(max-height: 500px) {
+
+
+  /*
+    回転直後のiPhone Safariは、実際に見える高さより
+    大きい値でレイアウトする場合がある。
+    画像を少しだけ低くし、下のコントローラー用の
+    余裕を明示的に確保する。
+  */
+  #noteImage {
+
+    max-height:
+      calc(var(--app-height) - var(--compact-layout-reserved-height));
+
+  }
+
+
+
+  /* 鍵盤の上の余白を増やさないよう、画像エリアを上寄せにする */
+  body {
+
+    align-items: flex-start;
+
+    padding-top: 6px;
+
+    box-sizing: border-box;
+
+  }
+}
+
+
+
+/* =====================================
+   縦持ち時も横向け画面として表示
+
+   縦向けの画面幅に合わせて縮小・再配置せず、
+   アプリ全体を90度回転する。
+
+   これにより、スマホを縦に持っていても
+   横向け時と同じ幅・高さの座標系、配置、
+   操作部品をそのまま表示する。
+   ===================================== */
+
+@media
+(orientation: portrait) {
+
+
+  body {
+
+    /*
+      横向け時の幅 = 縦持ち画面の高さ
+      横向け時の高さ = 縦持ち画面の幅
+    */
+    position: fixed;
+
+    top: 50%;
+    left: 50%;
+
+    width: var(--app-height);
+    height: 100vw;
+
+    margin: 0;
+    padding-top: 6px;
+
+    box-sizing: border-box;
+
+    align-items: flex-start;
+
+    transform:
+      translate(-50%, -50%)
+      rotate(90deg);
+
+    transform-origin: center;
+
+  }
+
+
+
+  /* 横向け時と同じ利用可能領域を使う */
+  #imageArea {
+
+    max-width: var(--app-height);
+    max-height: 100vw;
+
+    /*
+      bodyを時計回りに90度回転しているため、
+      回転前の下方向への移動は縦持ち画面では左方向への移動になる。
+    */
+    transform:
+      translateY(var(--portrait-content-shift));
+
+  }
+
+
+
+  #noteImage {
+
+    max-width: var(--app-height);
+    max-height:
+      calc(100vw - var(--compact-layout-reserved-height));
+
+  }
 }
 
 
@@ -721,6 +976,62 @@ body {
 }
 
 /* =====================================
+   音声開始用オーバーレイ
+   ===================================== */
+
+#audioStartOverlay {
+
+  /*
+    画面全体を覆う
+  */
+  position: fixed;
+
+  inset: 0;
+
+
+  /*
+    下の音符画面が見える程度に
+    薄いグレーをかける
+  */
+  background:
+    rgba(100, 100, 100, 0.25);
+
+
+  /*
+    音符などより手前に表示する
+  */
+  z-index: 10000;
+
+
+  /*
+    通常は隠し、音声開始に失敗した場合だけ
+    JavaScriptから再表示する。
+  */
+  display: none;
+
+  justify-content: center;
+
+  align-items: center;
+
+}
+
+
+#audioStartMessage {
+
+  padding: 12px 20px;
+
+  background:
+    rgba(255, 255, 255, 0.9);
+
+  border-radius: 10px;
+
+  font-size: 16px;
+
+  color: #333;
+
+}
+
+/* =====================================
    アプリ情報ボタン
    ===================================== */
 
@@ -753,22 +1064,28 @@ body {
 
   border:
     1px solid
-    rgba(0, 0, 0, 0.16);
+    rgba(132, 97, 30, 0.28);
 
 
   border-radius: 50%;
 
 
   background:
-    rgba(255, 255, 255, 0.88);
+    linear-gradient(
+      145deg,
+      rgba(255, 254, 248, 0.96),
+      rgba(235, 222, 194, 0.92)
+    );
 
 
   box-shadow:
-    0 2px 8px
-    rgba(0, 0, 0, 0.12);
+    0 5px 12px
+    rgba(86, 61, 17, 0.17),
+    inset 0 1px 0
+    rgba(255, 255, 255, 0.88);
 
 
-  color: #555;
+  color: #755314;
 
 
   font-size: 21px;
@@ -788,6 +1105,10 @@ body {
 
   transform:
     scale(0.94);
+
+  box-shadow:
+    inset 0 2px 5px
+    rgba(108, 72, 10, 0.20);
 
 }
 
@@ -839,6 +1160,15 @@ body {
   box-sizing: border-box;
 
 
+  overflow-y: auto;
+
+
+  overscroll-behavior: contain;
+
+
+  touch-action: pan-y;
+
+
   line-height: normal;
 
 }
@@ -856,6 +1186,18 @@ body {
 
   width:
     min(360px, 100%);
+
+
+  max-height: 100%;
+
+
+  overflow-y: auto;
+
+
+  -webkit-overflow-scrolling: touch;
+
+
+  touch-action: pan-y;
 
 
   box-sizing:
@@ -888,10 +1230,12 @@ body {
     left;
 
 
-  /*
-    演奏中の連続タップでテキスト選択状態にならないよう、
-    bodyの選択不可設定をそのまま使う。
-  */
+  user-select:
+    text;
+
+
+  -webkit-user-select:
+    text;
 
 }
 
@@ -1040,299 +1384,5 @@ body {
 
   transform:
     scale(0.92);
-
-}
-
-
-
-/* =====================================
-   象牙調の外観と演奏操作
-   ===================================== */
-
-html,
-body {
-
-  background:
-    radial-gradient(
-      ellipse at 50% -20%,
-      #fffdf7 0%,
-      rgba(255, 253, 247, 0) 58%
-    ),
-    linear-gradient(
-      135deg,
-      #e9dfcb 0%,
-      #fbf8f0 52%,
-      #e6dcc9 100%
-    );
-
-}
-
-
-body {
-
-  color: #493b23;
-
-  /* 演奏画面ではブラウザの拡大・スクロール操作を使わせない。 */
-  touch-action: none;
-
-}
-
-
-/* 情報ダイアログを開いているときだけ、本文のスクロールを許可する。 */
-body.is-info-open {
-
-  touch-action: auto;
-
-}
-
-
-#noteImage {
-
-  -webkit-user-drag: none;
-
-  touch-action: none;
-
-}
-
-
-/* =====================================
-   押している音符の表示
-   ===================================== */
-
-#notePressMarker {
-
-  position: absolute;
-
-  box-sizing: border-box;
-
-  opacity: 0;
-
-  pointer-events: none;
-
-  z-index: 10;
-
-  border-radius: 999px;
-
-  transform:
-    translate(-50%, -50%)
-    rotate(var(--note-press-angle, 0deg));
-
-  transition:
-    opacity 70ms ease-out,
-    filter 70ms ease-out;
-
-}
-
-
-#notePressMarker.is-visible {
-
-  opacity: 1;
-
-}
-
-
-#notePressMarker.is-white {
-
-  background:
-    linear-gradient(
-      180deg,
-      rgba(255, 247, 190, 0.88),
-      rgba(205, 148, 31, 0.70)
-    );
-
-  border:
-    1px solid
-    rgba(143, 96, 11, 0.72);
-
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.92),
-    inset 0 -5px 9px rgba(117, 73, 6, 0.25),
-    0 0 10px rgba(221, 170, 39, 0.62);
-
-}
-
-
-#notePressMarker.is-black {
-
-  background:
-    linear-gradient(
-      180deg,
-      rgba(255, 231, 128, 0.94),
-      rgba(192, 119, 10, 0.90)
-    );
-
-  border:
-    1px solid
-    rgba(255, 246, 190, 0.90);
-
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.70),
-    inset 0 -5px 9px rgba(89, 48, 3, 0.30),
-    0 0 13px rgba(235, 182, 37, 0.78);
-
-}
-
-
-#flashMarker {
-
-  z-index: 20;
-
-}
-
-
-/* =====================================
-   象牙調の操作部品
-   ===================================== */
-
-#keyControl {
-
-  border:
-    1px solid
-    rgba(133, 99, 32, 0.20);
-
-  background:
-    linear-gradient(
-      145deg,
-      rgba(255, 253, 248, 0.97),
-      rgba(232, 219, 190, 0.94)
-    );
-
-  box-shadow:
-    0 4px 12px rgba(103, 75, 26, 0.20),
-    inset 0 1px 0 rgba(255, 255, 255, 0.94),
-    inset 0 -2px 4px rgba(130, 91, 20, 0.10);
-
-}
-
-
-#keyDown,
-#keyUp {
-
-  border:
-    1px solid
-    rgba(133, 99, 32, 0.20);
-
-  background:
-    linear-gradient(
-      145deg,
-      #fffdf8,
-      #e9deca
-    );
-
-  box-shadow:
-    0 3px 7px rgba(103, 75, 26, 0.16),
-    inset 0 1px 0 rgba(255, 255, 255, 0.90),
-    inset 0 -2px 3px rgba(145, 108, 41, 0.10);
-
-  color: #80601c;
-
-  text-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.75);
-
-}
-
-
-#keyDisplay {
-
-  border:
-    1px solid
-    rgba(133, 99, 32, 0.24);
-
-  background:
-    linear-gradient(
-      145deg,
-      #fff8e7,
-      #e7d3a0
-    );
-
-  box-shadow:
-    0 3px 7px rgba(103, 75, 26, 0.16),
-    inset 0 1px 0 rgba(255, 255, 255, 0.88),
-    inset 0 -2px 3px rgba(128, 86, 13, 0.13);
-
-  color: #755314;
-
-  text-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.72);
-
-}
-
-
-#keyDown:active,
-#keyUp:active,
-#keyDisplay:active,
-#infoButton:active {
-
-  box-shadow:
-    inset 0 2px 5px
-    rgba(108, 72, 10, 0.20);
-
-}
-
-
-#infoButton {
-
-  border-color:
-    rgba(133, 99, 32, 0.24);
-
-  background:
-    linear-gradient(
-      145deg,
-      rgba(255, 253, 248, 0.96),
-      rgba(231, 215, 180, 0.94)
-    );
-
-  box-shadow:
-    0 3px 8px rgba(103, 75, 26, 0.16),
-    inset 0 1px 0 rgba(255, 255, 255, 0.90);
-
-  color: #755314;
-
-}
-
-
-#infoOverlay {
-
-  background:
-    rgba(0, 0, 0, 0.28);
-
-  overflow-y: auto;
-
-  overscroll-behavior: contain;
-
-  touch-action: pan-y;
-
-}
-
-
-#infoDialog {
-
-  max-height: 100%;
-
-  overflow-y: auto;
-
-  -webkit-overflow-scrolling: touch;
-
-  background:
-    rgba(255, 255, 255, 0.97);
-
-  box-shadow:
-    0 8px 30px rgba(0, 0, 0, 0.22);
-
-  color: #333;
-
-}
-
-
-#infoDisclaimer {
-
-  color: #555;
-
-}
-
-
-#infoCopyright {
-
-  color: #777;
 
 }
