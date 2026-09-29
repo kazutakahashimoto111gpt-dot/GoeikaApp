@@ -11,7 +11,7 @@ function readProjectFile(relativePath) {
   return fs.readFileSync(
     path.join(projectRoot, relativePath),
     "utf8"
-  );
+  ).replace(/\r\n/g, "\n");
 }
 
 function checkJavaScriptSyntax(relativePath) {

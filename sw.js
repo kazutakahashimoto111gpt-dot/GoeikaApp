@@ -48,8 +48,11 @@
 //
 // ====================================================
 
+const CACHE_PREFIX =
+  "goeikaapp-";
+
 const CACHE_NAME =
-  "v1.0.46";
+  CACHE_PREFIX + "v1.0.46";
 
 
 
@@ -266,8 +269,8 @@ self.addEventListener(
 
       ここでは、
 
-      新しいCACHE_NAME以外の
-      古いキャッシュを削除する。
+      このアプリのプレフィックスを持つ
+      古いキャッシュだけを削除する。
     */
 
     event.waitUntil(
@@ -298,13 +301,15 @@ self.addEventListener(
 
                     CACHE_NAME
 
-                  と違う名前なら、
-
-                  古いバージョンの
-                  キャッシュと判断する。
+                  と違い、かつこのアプリの
+                  プレフィックスを持つ名前だけを
+                  古いキャッシュと判断する。
                 */
 
                 if (
+                  cacheName.startsWith(
+                    CACHE_PREFIX
+                  ) &&
                   cacheName !==
                   CACHE_NAME
                 ) {
@@ -406,9 +411,15 @@ self.addEventListener(
         を調べる。
       */
 
-      caches.match(
-        event.request
+      caches.open(
+        CACHE_NAME
       )
+
+        .then(cache =>
+          cache.match(
+            event.request
+          )
+        )
 
 
         .then(cachedResponse => {
