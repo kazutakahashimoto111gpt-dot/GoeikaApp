@@ -49,7 +49,7 @@
 // ====================================================
 
 const CACHE_NAME =
-  "v1.0.44";
+  "v1.0.45";
 
 
 
@@ -218,6 +218,19 @@ self.addEventListener(
         waiting状態でこのメッセージを受け取る。
       */
       self.skipWaiting();
+
+    }
+
+    if (
+      event.data &&
+      event.data.type ===
+        "GET_CACHE_NAME" &&
+      event.ports[0]
+    ) {
+
+      event.ports[0].postMessage({
+        cacheName: CACHE_NAME
+      });
 
     }
 

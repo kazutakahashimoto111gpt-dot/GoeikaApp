@@ -2570,6 +2570,12 @@ const infoCloseButton =
   );
 
 
+const cacheNameValue =
+  document.getElementById(
+    "cacheNameValue"
+  );
+
+
 let infoPreviouslyFocusedElement =
   null;
 
@@ -2587,6 +2593,82 @@ function isInfoDialogOpen() {
   return infoOverlay.getAttribute(
     "aria-hidden"
   ) === "false";
+
+}
+
+
+async function updateInfoCacheName() {
+
+  cacheNameValue.textContent =
+    "確認中…";
+
+  if (
+    !("serviceWorker" in navigator)
+  ) {
+
+    cacheNameValue.textContent =
+      "利用できません";
+
+    return;
+
+  }
+
+  try {
+
+    const worker =
+      navigator.serviceWorker.controller ||
+      (await navigator.serviceWorker.getRegistration())?.active;
+
+    if (!worker) {
+
+      cacheNameValue.textContent =
+        "利用できません";
+
+      return;
+
+    }
+
+    const channel =
+      new MessageChannel();
+
+    const cacheName =
+      await new Promise((resolve, reject) => {
+
+        const timeout =
+          setTimeout(() => {
+
+            channel.port1.close();
+            reject(new Error("キャッシュ名の取得がタイムアウトしました"));
+
+          }, 3000);
+
+        channel.port1.onmessage =
+          event => {
+
+            clearTimeout(timeout);
+            channel.port1.close();
+            resolve(event.data?.cacheName);
+
+          };
+
+        worker.postMessage(
+          { type: "GET_CACHE_NAME" },
+          [channel.port2]
+        );
+
+      });
+
+    cacheNameValue.textContent =
+      typeof cacheName === "string"
+        ? cacheName
+        : "取得できません";
+
+  } catch (error) {
+
+    cacheNameValue.textContent =
+      "取得できません";
+
+  }
 
 }
 
@@ -2644,6 +2726,8 @@ function openInfoDialog() {
   */
 
   infoCloseButton.focus();
+
+  updateInfoCacheName();
 
 }
 
