@@ -49,10 +49,16 @@
 // ====================================================
 
 const CACHE_PREFIX =
-  "goeikaapp-";
+  "goeikaapp-main-";
 
 const CACHE_NAME =
-  CACHE_PREFIX + "v1.0.46";
+  CACHE_PREFIX + "v1.0.47";
+
+// 旧main版と現行main版のバージョン付きキャッシュだけを管理する。
+const MAIN_CACHE_NAME_PATTERN =
+  /^goeikaapp-main-v\d+\.\d+\.\d+$/;
+const LEGACY_MAIN_CACHE_NAME_PATTERN =
+  /^goeikaapp-v\d+\.\d+\.\d+$/;
 
 
 
@@ -125,6 +131,11 @@ const CACHEABLE_URLS =
         ).href
     )
   );
+
+const APP_ROOT_URL =
+  new URL(self.registration.scope);
+const APP_INDEX_URL =
+  new URL("index.html", APP_ROOT_URL);
 
 
 
@@ -269,8 +280,7 @@ self.addEventListener(
 
       ここでは、
 
-      このアプリのプレフィックスを持つ
-      古いキャッシュだけを削除する。
+      main版のバージョン付きキャッシュだけを削除する。
     */
 
     event.waitUntil(
@@ -301,17 +311,17 @@ self.addEventListener(
 
                     CACHE_NAME
 
-                  と違い、かつこのアプリの
-                  プレフィックスを持つ名前だけを
+                  と違い、かつmain版の命名規則に
+                  完全一致する名前だけを
                   古いキャッシュと判断する。
                 */
 
                 if (
-                  cacheName.startsWith(
-                    CACHE_PREFIX
-                  ) &&
-                  cacheName !==
-                  CACHE_NAME
+                  cacheName !== CACHE_NAME &&
+                  (
+                    MAIN_CACHE_NAME_PATTERN.test(cacheName) ||
+                    LEGACY_MAIN_CACHE_NAME_PATTERN.test(cacheName)
+                  )
                 ) {
 
 
@@ -354,7 +364,7 @@ self.addEventListener(
 // JavaScript
 // 画像
 //
-// などを区別せず、
+// このアプリの許可済みURLだけを、
 //
 //   まずキャッシュ
 //        ↓
@@ -393,6 +403,23 @@ self.addEventListener(
 
     }
 
+    const requestUrl =
+      new URL(event.request.url);
+    const isAppNavigation =
+      event.request.mode === "navigate" &&
+      requestUrl.origin === APP_ROOT_URL.origin &&
+      (
+        requestUrl.pathname === APP_ROOT_URL.pathname ||
+        requestUrl.pathname === APP_INDEX_URL.pathname
+      );
+
+    if (
+      !isAppNavigation &&
+      !CACHEABLE_URLS.has(event.request.url)
+    ) {
+      return;
+    }
+
 
 
     // =====================================
@@ -415,11 +442,15 @@ self.addEventListener(
         CACHE_NAME
       )
 
-        .then(cache =>
-          cache.match(
-            event.request
-          )
-        )
+        .then(async cache => {
+          const cachedResponse =
+            await cache.match(event.request);
+
+          return cachedResponse ||
+            (isAppNavigation
+              ? cache.match(APP_ROOT_URL.href)
+              : undefined);
+        })
 
 
         .then(cachedResponse => {

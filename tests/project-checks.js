@@ -61,6 +61,30 @@ notes.forEach((note, index) => {
 });
 
 const script = readProjectFile("script.js");
+assert.match(
+  script,
+  /localStorage\.getItem\(\s*"goeikaapp:keyShift"\s*\)/,
+  "main版専用のキー設定を読み込んでいません"
+);
+assert.match(
+  script,
+  /localStorage\.setItem\(\s*"goeikaapp:keyShift"\s*,/,
+  "main版専用のキー設定に保存していません"
+);
+assert.match(
+  script,
+  /localStorage\.getItem\(\s*"kongoKeyShift"\s*\)/,
+  "旧キー設定の移行がありません"
+);
+assert.doesNotMatch(
+  script,
+  /localStorage\.removeItem\(\s*"kongoKeyShift"\s*\)/,
+  "他アプリが使う可能性のある旧キーを削除しています"
+);
+assert.match(script, /Number\(storedValue\)/);
+assert.match(script, /Number\.isInteger\(parsedValue\)/);
+assert.match(script, /Math\.max\(\s*-12,\s*Math\.min\(\s*12,/);
+
 const notePressLayoutsMatch = script.match(
   /const notePressLayouts = \[([\s\S]*?)\];/
 );
@@ -248,4 +272,140 @@ assert.match(
   "cache.putの完了を待っていません"
 );
 
-console.log("Project checks passed.");
+async function checkServiceWorkerIsolation() {
+  const appRoot = "https://example.com/main/";
+  const currentCache = "goeikaapp-main-v1.0.47";
+  const cacheNames = new Set([
+    "goeikaapp-v1.0.45",
+    "goeikaapp-v1.0.46",
+    "goeikaapp-main-v1.0.46",
+    currentCache,
+    "goeikaapp-hk-v4.0.4",
+    "other-pwa-v1",
+    "unrelated-cache",
+    "goeikaapp-main-hk-v1.0.1",
+    "goeikaapp-v1.0.45-extra"
+  ]);
+  const deleted = [];
+  const opened = [];
+  const fetched = [];
+  const stored = [];
+  const cachedResponses = new Map();
+  const listeners = new Map();
+  const cache = {
+    addAll: async () => {},
+    match: async request =>
+      cachedResponses.get(typeof request === "string" ? request : request.url),
+    put: async (request, response) => {
+      stored.push(request.url);
+      cachedResponses.set(request.url, response);
+    }
+  };
+  const context = {
+    URL,
+    Set,
+    Promise,
+    console,
+    self: {
+      location: { href: `${appRoot}sw.js` },
+      registration: { scope: appRoot },
+      addEventListener: (type, listener) => listeners.set(type, listener)
+    },
+    caches: {
+      keys: async () => [...cacheNames],
+      delete: async name => {
+        deleted.push(name);
+        return cacheNames.delete(name);
+      },
+      open: async name => {
+        opened.push(name);
+        return cache;
+      }
+    },
+    // 実ネットワークへ接続しない。許可済みURLの動作確認用モック。
+    fetch: async request => {
+      fetched.push(request.url);
+      return { status: 200, clone() { return this; } };
+    }
+  };
+
+  vm.createContext(context);
+  new vm.Script(serviceWorker, { filename: "sw.js" }).runInContext(context);
+
+  let reportedCache;
+  listeners.get("message")({
+    data: { type: "GET_CACHE_NAME" },
+    ports: [{ postMessage: message => { reportedCache = message.cacheName; } }]
+  });
+  assert.equal(reportedCache, currentCache, "main版のキャッシュ名が更新されていません");
+
+  let activation;
+  listeners.get("activate")({ waitUntil: promise => { activation = promise; } });
+  await activation;
+
+  assert.deepEqual(
+    deleted.sort(),
+    [
+      "goeikaapp-v1.0.45",
+      "goeikaapp-v1.0.46",
+      "goeikaapp-main-v1.0.46"
+    ].sort(),
+    "旧main版以外のキャッシュが削除されました"
+  );
+  for (const name of [
+    currentCache,
+    "goeikaapp-hk-v4.0.4",
+    "other-pwa-v1",
+    "unrelated-cache",
+    "goeikaapp-main-hk-v1.0.1",
+    "goeikaapp-v1.0.45-extra"
+  ]) {
+    assert.ok(cacheNames.has(name), `${name}が削除されました`);
+  }
+
+  async function dispatchFetch(url, mode = "same-origin", method = "GET") {
+    let responsePromise;
+    listeners.get("fetch")({
+      request: { url, mode, method },
+      respondWith: promise => { responsePromise = promise; }
+    });
+    if (responsePromise) await responsePromise;
+    return Boolean(responsePromise);
+  }
+
+  const rootResponse = { fromCache: true };
+  cachedResponses.set(appRoot, rootResponse);
+  for (const url of [
+    "https://example.com/other-pwa/",
+    "https://example.com/other-pwa/style.css",
+    "https://example.com/main-other/",
+    "https://external.example/app/",
+    `${appRoot}unknown.js`,
+    `${appRoot}style.css?other=1`
+  ]) {
+    assert.equal(
+      await dispatchFetch(url, "navigate"),
+      false,
+      `${url}にService Workerが介入しました`
+    );
+  }
+  assert.equal(await dispatchFetch(`${appRoot}style.css`, "same-origin", "POST"), false);
+  assert.equal(opened.length, 0, "許可リスト外の要求でキャッシュを開きました");
+  assert.equal(fetched.length, 0, "許可リスト外の要求でfetchしました");
+  assert.equal(stored.length, 0, "許可リスト外の要求を保存しました");
+
+  assert.equal(await dispatchFetch(`${appRoot}?launch=1`, "navigate"), true);
+  assert.equal(await dispatchFetch(`${appRoot}index.html`, "navigate"), true);
+  assert.equal(fetched.length, 0, "main版のオフライン画面がキャッシュから返りません");
+  assert.equal(await dispatchFetch(`${appRoot}style.css`), true);
+  assert.deepEqual(fetched, [`${appRoot}style.css`]);
+  assert.deepEqual(stored, [`${appRoot}style.css`]);
+  assert.ok(opened.every(name => name === currentCache));
+}
+
+checkServiceWorkerIsolation()
+  .then(() => console.log("Project checks passed."))
+  .catch(error => {
+    console.error(error);
+    process.exitCode = 1;
+  });
