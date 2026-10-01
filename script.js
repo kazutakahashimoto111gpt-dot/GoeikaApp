@@ -35,6 +35,64 @@ function isPortraitAppRotated() {
 }
 
 
+// 横向きPWAでページが上端より下へずれた場合だけ位置を戻す。
+let negativeScrollResetAttempts = 0;
+let negativeScrollCheckTimer = null;
+
+function resetNegativePageScroll() {
+  if (
+    !window.matchMedia("(display-mode: standalone)").matches ||
+    window.innerWidth <= window.innerHeight ||
+    (window.visualViewport && window.visualViewport.scale !== 1)
+  ) {
+    return;
+  }
+
+  if (window.scrollY >= 0) {
+    negativeScrollResetAttempts = 0;
+    return;
+  }
+
+  if (negativeScrollResetAttempts >= 3) return;
+
+  negativeScrollResetAttempts++;
+  window.scrollTo(0, 0);
+}
+
+function checkNegativePageScrollAfterDisplayChange() {
+  negativeScrollResetAttempts = 0;
+  requestAnimationFrame(resetNegativePageScroll);
+  window.setTimeout(resetNegativePageScroll, 200);
+  window.setTimeout(resetNegativePageScroll, 700);
+}
+
+function checkNegativePageScrollAfterScroll() {
+  if (negativeScrollCheckTimer !== null) {
+    window.clearTimeout(negativeScrollCheckTimer);
+  }
+
+  negativeScrollCheckTimer = window.setTimeout(() => {
+    negativeScrollCheckTimer = null;
+    resetNegativePageScroll();
+  }, 80);
+}
+
+checkNegativePageScrollAfterDisplayChange();
+window.addEventListener("pageshow", checkNegativePageScrollAfterDisplayChange);
+window.addEventListener("resize", checkNegativePageScrollAfterDisplayChange);
+window.addEventListener("orientationchange", checkNegativePageScrollAfterDisplayChange);
+window.addEventListener("scroll", checkNegativePageScrollAfterScroll, { passive: true });
+window.visualViewport?.addEventListener(
+  "scroll",
+  checkNegativePageScrollAfterScroll,
+  { passive: true }
+);
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) checkNegativePageScrollAfterDisplayChange();
+});
+
+
+
 const flashMarker =
   document.getElementById(
     "flashMarker"
