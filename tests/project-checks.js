@@ -274,11 +274,12 @@ assert.match(
 
 async function checkServiceWorkerIsolation() {
   const appRoot = "https://example.com/main/";
-  const currentCache = "goeikaapp-main-v1.0.47";
+  const currentCache = "goeikaapp-main-v1.0.48";
   const cacheNames = new Set([
     "goeikaapp-v1.0.45",
     "goeikaapp-v1.0.46",
     "goeikaapp-main-v1.0.46",
+    "goeikaapp-main-v1.0.47",
     currentCache,
     "goeikaapp-hk-v4.0.4",
     "other-pwa-v1",
@@ -348,7 +349,8 @@ async function checkServiceWorkerIsolation() {
     [
       "goeikaapp-v1.0.45",
       "goeikaapp-v1.0.46",
-      "goeikaapp-main-v1.0.46"
+      "goeikaapp-main-v1.0.46",
+      "goeikaapp-main-v1.0.47"
     ].sort(),
     "旧main版以外のキャッシュが削除されました"
   );

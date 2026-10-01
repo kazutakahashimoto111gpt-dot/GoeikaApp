@@ -2607,6 +2607,93 @@ const cacheNameValue =
   );
 
 
+const viewportDebugValues =
+  document.getElementById(
+    "viewportDebugValues"
+  );
+
+
+// 画面外の要素でCSSのviewport単位の実寸を測る。
+const viewportUnitProbes = {};
+
+for (const unit of ["vh", "dvh", "svh", "lvh"]) {
+
+  const probe = document.createElement("div");
+  probe.setAttribute("aria-hidden", "true");
+  probe.style.cssText =
+    `position:fixed;left:-10000px;top:0;width:1px;height:100${unit};visibility:hidden;pointer-events:none;contain:strict;`;
+  document.body.appendChild(probe);
+  viewportUnitProbes[unit] = probe;
+
+}
+
+
+function updateViewportDebug() {
+
+  if (!isInfoDialogOpen()) {
+    return;
+  }
+
+  const vv = window.visualViewport;
+  const css = getComputedStyle(document.documentElement);
+  const number = value =>
+    value == null ? "—" : String(value);
+
+  const lines = [
+    "Viewport Debug",
+    "----------------",
+    `window.innerWidth: ${window.innerWidth}`,
+    `window.innerHeight: ${window.innerHeight}`,
+    `window.outerWidth: ${window.outerWidth}`,
+    `window.outerHeight: ${window.outerHeight}`,
+    `window.scrollY: ${window.scrollY}`,
+    `documentElement.clientWidth: ${document.documentElement.clientWidth}`,
+    `documentElement.clientHeight: ${document.documentElement.clientHeight}`,
+    `documentElement.scrollTop: ${document.documentElement.scrollTop}`,
+    `documentElement.rect.top: ${document.documentElement.getBoundingClientRect().top}`,
+    `body.rect.top: ${document.body.getBoundingClientRect().top}`,
+    `visualViewport.width: ${number(vv?.width)}`,
+    `visualViewport.height: ${number(vv?.height)}`,
+    `visualViewport.offsetTop: ${number(vv?.offsetTop)}`,
+    `visualViewport.pageTop: ${number(vv?.pageTop)}`,
+    `visualViewport.offsetLeft: ${number(vv?.offsetLeft)}`,
+    `visualViewport.scale: ${number(vv?.scale)}`,
+    ...["vh", "dvh", "svh", "lvh"].map(unit =>
+      `100${unit}: ${getComputedStyle(viewportUnitProbes[unit]).height}`
+    ),
+    `--app-height: ${css.getPropertyValue("--app-height").trim() || "(未設定)"}`,
+    `display-mode standalone: ${window.matchMedia("(display-mode: standalone)").matches}`,
+    `navigator.standalone: ${number(navigator.standalone)}`,
+    `orientation: ${number(screen.orientation?.type)}`,
+    `screen: ${screen.width} x ${screen.height}`,
+    `devicePixelRatio: ${window.devicePixelRatio}`
+  ];
+
+  viewportDebugValues.textContent =
+    lines.join("\n");
+
+}
+
+
+window.addEventListener("resize", updateViewportDebug);
+window.addEventListener("orientationchange", updateViewportDebug);
+window.addEventListener("scroll", updateViewportDebug);
+
+if (window.visualViewport) {
+
+  window.visualViewport.addEventListener(
+    "resize",
+    updateViewportDebug
+  );
+
+  window.visualViewport.addEventListener(
+    "scroll",
+    updateViewportDebug
+  );
+
+}
+
+
 let infoPreviouslyFocusedElement =
   null;
 
@@ -2758,6 +2845,7 @@ function openInfoDialog() {
 
   infoCloseButton.focus();
 
+  updateViewportDebug();
   updateInfoCacheName();
 
 }
