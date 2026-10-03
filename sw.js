@@ -4,7 +4,7 @@ const CACHE_PREFIX =
   "goeikaapp-main-";
 
 const CACHE_NAME =
-  CACHE_PREFIX + "v1.0.51";
+  CACHE_PREFIX + "v1.0.52";
 
 // 旧main版と現行main版のバージョン付きキャッシュだけを管理する。
 const MAIN_CACHE_NAME_PATTERN =
@@ -28,16 +28,16 @@ const FILES_TO_CACHE = [
 
   "./notes.js",
 
-  "./note-keys-outward-sample-v5-octagon-transparent-15px-precise.png",
+  "./assets/note-keys-outward-sample-v5-octagon-transparent-15px-precise.png",
 
-  "./icons/favicon-48.png",
+  "./assets/icons/favicon-48.png",
 
 
-  "./icons/icon-192.png",
+  "./assets/icons/icon-192.png",
 
-  "./icons/icon-512.png",
+  "./assets/icons/icon-512.png",
 
-  "./icons/apple-touch-icon.png"
+  "./assets/icons/apple-touch-icon.png"
 
 ];
 

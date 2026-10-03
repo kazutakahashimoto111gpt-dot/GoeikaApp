@@ -241,7 +241,7 @@ assert.ok(
   "ルートHTMLを二重に事前キャッシュしています"
 );
 assert.ok(
-  precachePaths.includes("./icons/favicon-48.png"),
+  precachePaths.includes("./assets/icons/favicon-48.png"),
   "faviconが事前キャッシュに含まれていません"
 );
 
@@ -274,7 +274,7 @@ assert.match(
 
 async function checkServiceWorkerIsolation() {
   const appRoot = "https://example.com/main/";
-  const currentCache = "goeikaapp-main-v1.0.51";
+  const currentCache = "goeikaapp-main-v1.0.52";
   const cacheNames = new Set([
     "goeikaapp-v1.0.45",
     "goeikaapp-v1.0.46",
