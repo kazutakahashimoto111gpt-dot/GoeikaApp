@@ -103,6 +103,39 @@ self.addEventListener(
 
   event => {
 
+    const trustedOrigin =
+      self.location.origin;
+
+    const hasOrigin =
+      typeof event.origin ===
+      "string" &&
+      event.origin.length > 0;
+
+    const sourceUrl =
+      event.source &&
+      typeof event.source.url ===
+        "string"
+        ? event.source.url
+        : "";
+
+    const sourceOrigin =
+      sourceUrl
+        ? new URL(sourceUrl).origin
+        : "";
+
+    if (
+      (hasOrigin &&
+        event.origin !==
+          trustedOrigin) ||
+      (sourceOrigin &&
+        sourceOrigin !==
+          trustedOrigin)
+    ) {
+
+      return;
+
+    }
+
     if (
       event.data &&
       event.data.type ===
