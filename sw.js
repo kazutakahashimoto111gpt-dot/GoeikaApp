@@ -4,7 +4,7 @@ const CACHE_PREFIX =
   "goeikaapp-main-";
 
 const CACHE_NAME =
-  CACHE_PREFIX + "v1.0.52";
+  CACHE_PREFIX + "v1.0.53";
 
 // 旧main版と現行main版のバージョン付きキャッシュだけを管理する。
 const MAIN_CACHE_NAME_PATTERN =
@@ -102,6 +102,40 @@ self.addEventListener(
   "message",
 
   event => {
+
+    const trustedOrigin =
+      self.location.origin;
+
+    const hasOrigin =
+      typeof event.origin ===
+      "string" &&
+      event.origin.length > 0;
+
+    const sourceUrl =
+      event.source &&
+      typeof event.source.url ===
+        "string"
+        ? event.source.url
+        : "";
+
+    const sourceOrigin =
+      sourceUrl
+        ? new URL(sourceUrl).origin
+        : "";
+
+    if (
+      (!hasOrigin && !sourceOrigin) ||
+      (hasOrigin &&
+        event.origin !==
+          trustedOrigin) ||
+      (sourceOrigin &&
+        sourceOrigin !==
+          trustedOrigin)
+    ) {
+
+      return;
+
+    }
 
     if (
       event.data &&
