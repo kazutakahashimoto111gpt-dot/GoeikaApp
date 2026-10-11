@@ -124,6 +124,7 @@ self.addEventListener(
         : "";
 
     if (
+      (!hasOrigin && !sourceOrigin) ||
       (hasOrigin &&
         event.origin !==
           trustedOrigin) ||
