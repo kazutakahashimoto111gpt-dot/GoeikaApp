@@ -274,7 +274,7 @@ assert.match(
 
 async function checkServiceWorkerIsolation() {
   const appRoot = "https://example.com/main/";
-  const currentCache = "goeikaapp-main-v1.0.52";
+  const currentCache = "goeikaapp-main-v1.0.54";
   const cacheNames = new Set([
     "goeikaapp-v1.0.45",
     "goeikaapp-v1.0.46",
