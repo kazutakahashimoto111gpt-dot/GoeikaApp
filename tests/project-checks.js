@@ -27,6 +27,7 @@ function checkJavaScriptSyntax(relativePath) {
 for (const relativePath of [
   "notes.js",
   "script.js",
+  "microphone.js",
   "sw.js"
 ]) {
   checkJavaScriptSyntax(relativePath);
@@ -97,6 +98,9 @@ assert.equal(
 );
 
 const indexHtml = readProjectFile("index.html");
+
+assert.ok(indexHtml.indexOf('src="notes.js"') < indexHtml.indexOf('src="microphone.js"'));
+assert.ok(indexHtml.indexOf('src="microphone.js"') < indexHtml.indexOf('src="script.js"'), "マイク処理を本体より先に読み込んでいません");
 
 assert.match(
   indexHtml,
@@ -235,7 +239,7 @@ precachePaths
   });
 
 const appRoot = "https://example.com/GoeikaApp/";
-const currentCache = "goeikaapp-main-v1.0.54";
+const currentCache = "goeikaapp-main-v1.1.0";
 const appOrigin = new URL(appRoot).origin;
 const precacheUrls = precachePaths.map(file => new URL(file, appRoot).href);
 
@@ -281,6 +285,7 @@ function createServiceWorkerEnvironment(options = {}) {
     "goeikaapp-main-v1.0.48",
     "goeikaapp-main-v1.0.49",
     "goeikaapp-main-v1.0.50",
+    "goeikaapp-main-v1.0.55",
     currentCache,
     "goeikaapp-hk-v4.0.4",
     "other-pwa-v1",
@@ -417,6 +422,11 @@ async function checkServiceWorker() {
   for (const url of requiredAssetUrls) {
     assert.ok(installing.responses.has(url), `${url}がインストール時に保存されません`);
   }
+  installing.networkError = new Error("offline");
+  for (const url of [appRoot, `${appRoot}notes.js`, `${appRoot}microphone.js`, `${appRoot}script.js`]) {
+    assert.equal((await installing.fetch(url)).response, installing.responses.get(url), "オフラインで必要なファイルを取得できません");
+  }
+  assert.equal(installing.fetched.length, 0, "保存済みの調律機能の取得で通信しました");
   const failingSave = createDeferred();
   const failingInstall = createServiceWorkerEnvironment({ addAllGate: failingSave.promise });
   const failedInstallation = failingInstall.lifecycle("install");
@@ -435,7 +445,8 @@ async function checkServiceWorker() {
       "goeikaapp-main-v1.0.47",
       "goeikaapp-main-v1.0.48",
       "goeikaapp-main-v1.0.49",
-      "goeikaapp-main-v1.0.50"
+      "goeikaapp-main-v1.0.50",
+      "goeikaapp-main-v1.0.55"
     ].sort(),
     "旧main版以外のキャッシュが削除されました"
   );
@@ -569,13 +580,41 @@ function createAppEnvironment(options = {}) {
   const storageRemovals = [];
   const warnings = [];
   const audioContexts = [];
+  const resizeObservers = [];
   const scheduled = new Map();
+  const frames = new Map();
+  const streams = [];
+  const microphoneRequests = [];
+  const input = {
+    frequency: 0, amplitude: 0.15, harmonics: [1], noise: 0, dc: 0,
+    modulationDepth: 0, modulationDivisor: 2
+  };
+  let elapsed = 0;
+  let sampleOffset = 0;
+  let noiseSeed = 17;
   let nextTimer = 0;
   const schedule = callback => {
     const id = ++nextTimer;
     scheduled.set(id, callback);
     return id;
   };
+  const scheduleFrame = callback => {
+    const id = ++nextTimer;
+    frames.set(id, callback);
+    return id;
+  };
+  function createStream() {
+    const track = new MockEventTarget();
+    Object.assign(track, {
+      readyState: "live",
+      muted: false,
+      stopCalls: 0,
+      stop() { this.stopCalls++; this.readyState = "ended"; }
+    });
+    const stream = { track, getTracks: () => [track], getAudioTracks: () => [track] };
+    streams.push(stream);
+    return stream;
+  }
   function createAudioParam() {
     return {
       value: 0,
@@ -590,9 +629,12 @@ function createAppEnvironment(options = {}) {
     constructor() {
       this.state = "suspended";
       this.currentTime = 1;
+      this.sampleRate = options.sampleRate || 48000;
       this.destination = {};
       this.oscillators = [];
       this.gains = [];
+      this.sources = [];
+      this.analysers = [];
       this.resumeCalls = 0;
       audioContexts.push(this);
     }
@@ -600,9 +642,40 @@ function createAppEnvironment(options = {}) {
       this.resumeCalls++;
       if (options.resumeError) throw options.resumeError;
       await options.resumeGate;
+      if (this.state === "closed") throw new Error("終了済みです");
       this.state = "running";
     }
     async close() { this.state = "closed"; }
+    createMediaStreamSource(stream) {
+      const source = {
+        stream,
+        connections: [],
+        connect(target) { this.connections.push(target); return target; },
+        disconnect() { this.disconnected = true; }
+      };
+      this.sources.push(source);
+      return source;
+    }
+    createAnalyser() {
+      const rate = this.sampleRate;
+      const analyser = {
+        fftSize: 0,
+        disconnect() { this.disconnected = true; },
+        getFloatTimeDomainData(buffer) {
+          for (let index = 0; index < buffer.length; index++) {
+            const phase = 2 * Math.PI * input.frequency * (index + sampleOffset) / rate;
+            const tone = input.frequency ? input.harmonics.reduce((sum, amplitude, harmonic) =>
+              sum + amplitude * Math.sin(phase * (harmonic + 1)), 0) * input.amplitude : 0;
+            const envelope = 1 + input.modulationDepth * Math.sin(phase / input.modulationDivisor);
+            noiseSeed = (Math.imul(noiseSeed, 1664525) + 1013904223) >>> 0;
+            buffer[index] = tone * envelope + input.noise * (noiseSeed / 0xffffffff * 2 - 1) + input.dc;
+          }
+          sampleOffset += buffer.length;
+        }
+      };
+      this.analysers.push(analyser);
+      return analyser;
+    }
     createGain() {
       const gain = {
         gain: createAudioParam(),
@@ -636,6 +709,7 @@ function createAppEnvironment(options = {}) {
   const window = new MockEventTarget();
   Object.assign(window, {
     AudioContext: MockAudioContext,
+    isSecureContext: options.secureContext !== false,
     matchMedia: () => ({ matches: false }),
     innerWidth: 1000,
     innerHeight: 1000,
@@ -643,13 +717,34 @@ function createAppEnvironment(options = {}) {
     setTimeout: schedule,
     clearTimeout: id => scheduled.delete(id)
   });
+  if (options.audioUnsupported) window.AudioContext = undefined;
+  if (options.resizeObserver) {
+    window.ResizeObserver = class {
+      constructor(callback) { this.callback = callback; resizeObservers.push(this); }
+      observe(target) { this.target = target; }
+    };
+  }
+  const navigator = {
+    audioSession: { type: "auto" },
+    mediaDevices: options.microphoneUnsupported ? undefined : {
+      getSupportedConstraints: () => ({ autoGainControl: true, noiseSuppression: true, echoCancellation: true, channelCount: true }),
+      async getUserMedia(constraints) {
+        microphoneRequests.push(constraints);
+        if (options.microphoneError) throw options.microphoneError;
+        if (options.getUserMedia) return options.getUserMedia();
+        if (options.microphoneGate) return options.microphoneGate;
+        return createStream();
+      }
+    }
+  };
   const context = vm.createContext({
     window,
     document,
-    navigator: {},
+    navigator,
     HTMLElement: MockElement,
     console: { warn: (...args) => warnings.push(args) },
-    requestAnimationFrame: schedule,
+    requestAnimationFrame: scheduleFrame,
+    cancelAnimationFrame: id => frames.delete(id),
     setTimeout: schedule,
     clearTimeout: id => scheduled.delete(id),
     localStorage: {
@@ -667,8 +762,21 @@ function createAppEnvironment(options = {}) {
     }
   });
   new vm.Script(readProjectFile("notes.js"), { filename: "notes.js" }).runInContext(context);
+  new vm.Script(readProjectFile("microphone.js"), { filename: "microphone.js" }).runInContext(context);
   new vm.Script(script, { filename: "script.js" }).runInContext(context);
-  return { window, document, elements, storage, storageWrites, storageRemovals, warnings, audioContexts };
+  return {
+    window, document, navigator, elements, storage, storageWrites, storageRemovals, warnings, audioContexts,
+    input, streams, microphoneRequests, createStream, resizeObservers,
+    advance(milliseconds, step = 40) {
+      const end = elapsed + milliseconds;
+      while (elapsed < end) {
+        elapsed = Math.min(end, elapsed + step);
+        const pending = Array.from(frames.values());
+        frames.clear();
+        for (const callback of pending) callback(elapsed);
+      }
+    }
+  };
 }
 
 function pointerAt(note, pointerId = 1) {
@@ -774,18 +882,32 @@ async function checkAppRuntime() {
   await background.elements.get("noteImage").dispatch("pointerup", firstPointer);
   assertSoundStopped(background, "復帰後の音が停止しません");
 
-  const resuming = createDeferred();
-  const pending = createAppEnvironment({ resumeGate: resuming.promise });
-  const pendingImage = pending.elements.get("noteImage");
-  const starting = pendingImage.dispatch("pointerdown", firstPointer);
-  await pendingImage.dispatch("pointerup", firstPointer);
-  resuming.resolve();
-  await starting;
-  assert.equal(pending.audioContexts[0].oscillators.length, 0, "指を離した後で発音しました");
-  await pendingImage.dispatch("pointerdown", firstPointer);
-  assert.equal(pending.audioContexts[0].oscillators.length, 4, "初期化中の中断後に再演奏できません");
-  await pendingImage.dispatch("pointerup", firstPointer);
-  assertSoundStopped(pending, "中断後の演奏が停止しません");
+  for (const action of ["pointerup", "mode", "hidden", "pagehide"]) {
+    const resuming = createDeferred();
+    const pending = createAppEnvironment({ resumeGate: resuming.promise });
+    const pendingImage = pending.elements.get("noteImage");
+    const starting = pendingImage.dispatch("pointerdown", firstPointer);
+    if (action === "pointerup") await pendingImage.dispatch("pointerup", firstPointer);
+    if (action === "mode") await pending.elements.get("tuningMode").dispatch("click");
+    if (action === "hidden") {
+      pending.document.hidden = true;
+      pending.document.visibilityState = "hidden";
+      await pending.document.dispatch("visibilitychange");
+    }
+    if (action === "pagehide") await pending.window.dispatch("pagehide");
+    resuming.resolve();
+    await starting;
+    assert.equal(pending.audioContexts[0].oscillators.length, 0, "取り消した操作で後から発音しました");
+    assert.equal(pending.warnings.length, 0, "取り消した初期化を音声エラーとして報告しました");
+    pending.document.hidden = false;
+    pending.document.visibilityState = "visible";
+    await pending.document.dispatch("visibilitychange");
+    if (action === "mode") await pending.elements.get("performanceMode").dispatch("click");
+    await pendingImage.dispatch("pointerdown", firstPointer);
+    assert.equal(pending.audioContexts.at(-1).oscillators.length, 4, "初期化中の中断後に再演奏できません");
+    await pendingImage.dispatch("pointerup", firstPointer);
+    assertSoundStopped(pending, "中断後の演奏が停止しません");
+  }
 
   const failedAudio = createAppEnvironment({ resumeError: new Error("音声再開失敗") });
   await failedAudio.elements.get("noteImage").dispatch("pointerdown", firstPointer);
@@ -797,6 +919,588 @@ async function checkAppRuntime() {
 async function runChecks() {
   await checkServiceWorker();
   await checkAppRuntime();
+  await checkTuningRuntime();
+}
+
+async function checkTuningRuntime() {
+  const element = (environment, id) => environment.elements.get(id);
+  const click = (environment, id) => element(environment, id).dispatch("click");
+  function assertOctave(environment, expected) {
+    for (const [shift, id] of [["-1", "tuningOctaveDown"], ["0", "tuningOctaveNone"], ["1", "tuningOctaveUp"]]) {
+      assert.equal(element(environment, id).getAttribute("aria-pressed"), String(shift === expected), `表示補正${expected}の選択表示が不正です`);
+    }
+  }
+  const isLit = environment => /is-visible/.test(element(environment, "notePressMarker").className);
+  function assertNote(environment, note) {
+    assert.ok(isLit(environment), `${note.name}が点灯しません`);
+    assert.equal(element(environment, "notePressMarker").style.left, `${note.xRatio * 1000}px`, "異なる音符が点灯しました");
+    assert.equal(element(environment, "notePressMarker").style.top, `${note.yRatio * 1000}px`, "異なる音符が点灯しました");
+  }
+  async function startTuning(options = {}) {
+    const environment = createAppEnvironment(options);
+    await click(environment, "tuningMode");
+    assert.equal(environment.microphoneRequests.length, 0, "切替だけでマイクを要求しました");
+    await click(environment, "microphoneToggle");
+    assert.match(element(environment, "microphoneStatus").textContent, /歌わず/);
+    assert.equal(element(environment, "microphoneStatus").hidden, false, "周囲音の測定案内が隠れています");
+    environment.advance(1320);
+    assert.equal(element(environment, "microphoneLevelState").textContent, "入力中");
+    assert.equal(element(environment, "microphoneStatus").hidden, true, "通常入力中に重複する案内が表示されています");
+    return environment;
+  }
+  function assertReleased(environment) {
+    assert.ok(environment.streams.every(stream => stream.track.readyState === "ended"), "入力トラックが残っています");
+    assert.ok(environment.audioContexts.every(audio => audio.state === "closed"), "AudioContextが残っています");
+    assert.ok(environment.audioContexts.flatMap(audio => audio.sources).every(source => source.disconnected), "入力接続が残っています");
+    assert.equal(isLit(environment), false, "点灯が残っています");
+    assert.equal(element(environment, "microphoneLevel").value, 0, "入力レベルの測定値が残っています");
+    assert.equal(element(environment, "microphoneLevelState").textContent, "停止中");
+    const corrected = element(environment, "tuningOctaveNone").getAttribute("aria-pressed") === "true" ? "" : " ／ 補正後：—";
+    assert.equal(element(environment, "microphonePitch").textContent, `検出：—${corrected} ／ 点灯基準：—`, "停止後に検出音が残っています");
+  }
+
+  for (const mode of ["tuning", "performance", "invalid", "", undefined]) {
+    const environment = createAppEnvironment({ storage: { "goeikaapp:mode": mode } });
+    assert.equal(element(environment, "microphonePanel").hidden, mode !== "tuning");
+    assert.equal(element(environment, "tuningMode").getAttribute("aria-pressed"), String(mode === "tuning"));
+    assert.equal(element(environment, "microphoneLevelState").textContent, "停止中");
+    assert.equal(environment.microphoneRequests.length, 0, "モード復元時にマイクを要求しました");
+    assert.equal(environment.audioContexts.length, 0);
+  }
+  for (const [value, expected] of [
+    [undefined, 5], ["0", 5], ["11", 5], ["100", 5], ["73", 5], ["50", 5], ["44", 5],
+    ["", 5], ["invalid", 5], ["-1", 5], ["101", 5], ["2.5", 5]
+  ]) {
+    const environment = createAppEnvironment({ storage: { "goeikaapp:micSensitivity": value } });
+    assert.equal(Number(element(environment, "microphoneSensitivity").value), expected, `感度${value}の復元が不正です`);
+  }
+  for (let level = 1; level <= 10; level++) {
+    const environment = createAppEnvironment({ storage: { "goeikaapp:micSensitivity": String(level) } });
+    assert.equal(Number(element(environment, "microphoneSensitivity").value), level, `新形式の感度${level}を復元できません`);
+    element(environment, "microphoneSensitivity").value = String(level);
+    await element(environment, "microphoneSensitivity").dispatch("input");
+    assert.equal(element(environment, "microphoneSensitivityValue").textContent, String(level));
+    assert.equal(environment.storage.get("goeikaapp:micSensitivity"), String(level), "感度を1〜10で保存していません");
+    const restored = createAppEnvironment({ storage: Object.fromEntries(environment.storage) });
+    assert.equal(Number(element(restored, "microphoneSensitivity").value), level, `感度${level}を復元できません`);
+    assert.equal(restored.microphoneRequests.length, 0, "感度の復元でマイクを開始しました");
+    for (const value of ["0", "11", "2.5", "invalid", ""]) {
+      const previousWrites = environment.storageWrites.length;
+      element(environment, "microphoneSensitivity").value = value;
+      await element(environment, "microphoneSensitivity").dispatch("input");
+      assert.equal(Number(element(environment, "microphoneSensitivity").value), level, "不正な感度を採用しました");
+      assert.equal(environment.storageWrites.length, previousWrites, "不正な感度を保存しました");
+    }
+  }
+  for (const [value, expected] of [
+    [undefined, "0"], ["-1", "-1"], ["0", "0"], ["1", "1"], ["", "0"],
+    ["invalid", "0"], ["-2", "0"], ["2", "0"], ["0.5", "0"], ["12", "0"], ["1.0", "0"]
+  ]) {
+    const environment = createAppEnvironment({ storage: {
+      "goeikaapp:mode": "tuning", "goeikaapp:tuningOctaveShift": value
+    } });
+    assertOctave(environment, expected);
+    assert.equal(environment.microphoneRequests.length, 0, "補正の復元時にマイクを要求しました");
+    assert.equal(environment.audioContexts.length, 0);
+    assertReleased(environment);
+  }
+  const settings = createAppEnvironment({ storage: {
+    "goeikaapp:keyShift": "3", kongoKeyShift: "2", mode: "other", micSensitivity: "other",
+    tuningOctaveShift: "other", "other-pwa:tuningOctaveShift": "-1",
+    "other-pwa:mode": "other", "other-pwa:micSensitivity": "17"
+  } });
+  await click(settings, "tuningMode");
+  element(settings, "microphoneSensitivity").value = "9";
+  await element(settings, "microphoneSensitivity").dispatch("input");
+  await click(settings, "tuningOctaveUp");
+  assert.equal(settings.storage.get("goeikaapp:mode"), "tuning");
+  assert.equal(settings.storage.get("goeikaapp:micSensitivity"), "9");
+  assert.equal(settings.storage.get("goeikaapp:tuningOctaveShift"), "1");
+  assert.equal(settings.storage.get("other-pwa:tuningOctaveShift"), "-1");
+  assert.equal(settings.storage.get("tuningOctaveShift"), "other");
+  assert.equal(settings.storage.get("goeikaapp:keyShift"), "3");
+  assert.equal(settings.storage.get("kongoKeyShift"), "2");
+  assert.equal(settings.storage.get("other-pwa:mode"), "other");
+  assert.equal(settings.storage.get("other-pwa:micSensitivity"), "17");
+  assert.equal(settings.storage.get("mode"), "other");
+  assert.equal(settings.storage.get("micSensitivity"), "other");
+  assert.ok(settings.storageWrites.every(([key]) => ["goeikaapp:mode", "goeikaapp:micSensitivity", "goeikaapp:tuningOctaveShift"].includes(key)));
+  assert.deepEqual(settings.storageRemovals, []);
+  const restored = createAppEnvironment({ storage: Object.fromEntries(settings.storage) });
+  assert.equal(element(restored, "microphonePanel").hidden, false);
+  assert.equal(Number(element(restored, "microphoneSensitivity").value), 9);
+  assertOctave(restored, "1");
+  assert.equal(restored.microphoneRequests.length, 0);
+  assertReleased(restored);
+
+  const unavailable = createAppEnvironment({ storageReadError: true, storageWriteError: true });
+  assert.equal(Number(element(unavailable, "microphoneSensitivity").value), 5, "保存値を読めない場合に初期感度を使っていません");
+  assertOctave(unavailable, "0");
+  await click(unavailable, "tuningMode");
+  element(unavailable, "microphoneSensitivity").value = "9";
+  await element(unavailable, "microphoneSensitivity").dispatch("input");
+  assert.equal(element(unavailable, "microphoneSensitivityValue").textContent, "9");
+  assert.equal(element(unavailable, "microphonePanel").hidden, false);
+  await click(unavailable, "tuningOctaveUp");
+  assertOctave(unavailable, "1");
+  await click(unavailable, "microphoneToggle");
+  unavailable.advance(1320);
+  unavailable.input.frequency = 220;
+  unavailable.advance(240);
+  assertNote(unavailable, notes[12]);
+  await click(unavailable, "microphoneToggle");
+  assertReleased(unavailable);
+
+  // キーと点灯補正の両端でも、全音符を判定できることを確認する。
+  for (const sampleRate of [44100, 48000]) {
+    for (const shift of [-12, 2, 12]) {
+      for (const octave of [-1, 1]) {
+        const environment = await startTuning({ sampleRate, storage: {
+          "goeikaapp:keyShift": String(shift), "goeikaapp:tuningOctaveShift": String(octave)
+        } });
+        for (const note of notes) {
+          environment.input.frequency = note.frequency * 2 ** (shift / 12 - octave);
+          environment.advance(280);
+          assertNote(environment, note);
+        }
+        for (const [note, cents] of [[notes[0], -49], [notes.at(-1), 49]]) {
+          environment.input.frequency = note.frequency * 2 ** (shift / 12 - octave + cents / 1200);
+          environment.advance(280);
+          assertNote(environment, note);
+        }
+        for (const frequency of [
+          notes[0].frequency * 2 ** ((shift - 1) / 12),
+          notes.at(-1).frequency * 2 ** ((shift + 1) / 12)
+        ]) {
+          environment.input.frequency = frequency * 2 ** -octave;
+          environment.advance(280);
+          assert.equal(isLit(environment), false, "補正後の音域外を別の音符へ丸めました");
+        }
+        await click(environment, "microphoneToggle");
+        assertReleased(environment);
+      }
+    }
+  }
+
+  const correction = await startTuning({ storage: { "goeikaapp:keyShift": "2" } });
+  correction.input.frequency = notes[12].frequency * 2 ** (2 / 12 - 1);
+  correction.advance(240);
+  assertNote(correction, notes[0]);
+  await click(correction, "tuningOctaveUp");
+  assert.equal(isLit(correction), false, "補正変更時に古い点灯が残っています");
+  assert.equal(element(correction, "microphonePitch").textContent, "検出：— ／ 補正後：— ／ 点灯基準：—");
+  correction.advance(40);
+  assert.equal(isLit(correction), false, "補正変更後に安定待ちを省略しました");
+  correction.advance(40);
+  assertNote(correction, notes[12]);
+  const pitchDescription = element(correction, "microphonePitch").textContent.match(/^検出：(\d+\.\d) Hz ／ 補正後：(\d+\.\d) Hz ／ 点灯基準：五 493\.9 Hz$/);
+  assert.ok(pitchDescription, "検出値・補正後・点灯基準が区別されていません");
+  assert.ok(Math.abs(Number(pitchDescription[1]) - correction.input.frequency) < 0.2, "元の検出Hzが変更されました");
+  assert.ok(Math.abs(Number(pitchDescription[2]) - correction.input.frequency * 2) < 0.2, "補正後のHzが2倍ではありません");
+  assert.equal(correction.microphoneRequests.length, 1, "補正変更でマイクを再開始しました");
+  assert.equal(correction.audioContexts[0].state, "running");
+  await click(correction, "tuningOctaveUp");
+  assertNote(correction, notes[12]);
+  correction.input.frequency = notes[1].frequency * 2 ** (2 / 12);
+  correction.advance(240);
+  assertNote(correction, notes[13]);
+  await click(correction, "tuningOctaveNone");
+  assertOctave(correction, "0");
+  correction.advance(240);
+  assertNote(correction, notes[1]);
+  await click(correction, "tuningOctaveDown");
+  correction.input.frequency = notes[12].frequency * 2 ** (2 / 12 + 1);
+  correction.advance(240);
+  assertNote(correction, notes[12]);
+  await click(correction, "performanceMode");
+  assertReleased(correction);
+  await element(correction, "noteImage").dispatch("pointerdown", pointerAt(notes[12]));
+  assert.equal(correction.audioContexts.at(-1).oscillators[0].frequency.value, notes[12].frequency * 2 ** (2 / 12), "表示補正が演奏音へ影響しました");
+  await element(correction, "noteImage").dispatch("pointerup", { pointerId: 1 });
+  await click(correction, "tuningMode");
+  assertOctave(correction, "-1");
+  assert.equal(correction.storage.get("goeikaapp:tuningOctaveShift"), "-1");
+  assert.equal(correction.storage.get("goeikaapp:keyShift"), "2");
+
+  const switching = createAppEnvironment();
+  await element(switching, "noteImage").dispatch("pointerdown", pointerAt(notes[12]));
+  await click(switching, "tuningMode");
+  assertSoundStopped(switching, "調律モードへの切替で演奏が停止しません");
+  assert.equal(switching.audioContexts[0].state, "closed");
+  await element(switching, "noteImage").dispatch("pointerdown", pointerAt(notes[12]));
+  await element(switching, "noteImage").dispatch("pointermove", pointerAt(notes[0]));
+  assert.equal(switching.audioContexts.length, 1, "調律モードで演奏用Contextを作成しました");
+  assert.equal(isLit(switching), false, "調律モードのタップで点灯しました");
+  await click(switching, "performanceMode");
+  await element(switching, "noteImage").dispatch("pointerdown", pointerAt(notes[12]));
+  assert.equal(switching.audioContexts[1].oscillators.length, 4, "演奏モードに戻ると発音できません");
+  await element(switching, "noteImage").dispatch("pointerup", { pointerId: 1 });
+
+  for (const sampleRate of [44100, 48000]) {
+    for (const shift of [-12, 0, 12]) {
+      const environment = await startTuning({ sampleRate, storage: { "goeikaapp:keyShift": String(shift) } });
+      for (const note of notes) {
+        environment.input.frequency = note.frequency * 2 ** (shift / 12 + (note.no % 2 ? 20 : -20) / 1200);
+        environment.advance(280);
+        assertNote(environment, note);
+      }
+      for (const harmonics of [[0.15, 1], [0.15, 0, 1]]) {
+        environment.input.harmonics = harmonics;
+        for (const note of [notes[0], notes[12], notes[24]]) {
+          environment.input.frequency = note.frequency * 2 ** (shift / 12);
+          environment.advance(280);
+          assertNote(environment, note);
+        }
+      }
+      environment.input.harmonics = [1];
+      // 音量の周期的な変動を、1オクターブ下や3分の1の音として採用しない。
+      environment.input.modulationDepth = 0.3;
+      for (const divisor of [2, 3, 1.5]) {
+        environment.input.modulationDivisor = divisor;
+        for (const note of notes) {
+          environment.input.frequency = note.frequency * 2 ** (shift / 12);
+          environment.advance(280);
+          assertNote(environment, note);
+        }
+      }
+      environment.input.modulationDepth = 0;
+      for (const frequency of [50, 2000, 2200, 2500, 3000, 3500]) {
+        environment.input.frequency = frequency;
+        environment.advance(280);
+        assert.equal(isLit(environment), false, `音域外の${frequency}Hzを低い周期と誤認しました`);
+      }
+      await click(environment, "microphoneToggle");
+      assertReleased(environment);
+    }
+  }
+
+  const response = await startTuning();
+  response.input.frequency = 440;
+  response.advance(40);
+  assert.equal(isLit(response), false, "最初の検出だけで点灯しました");
+  response.advance(40);
+  assertNote(response, notes[12]);
+  response.input.frequency = 880;
+  response.advance(40);
+  assertNote(response, notes[12]);
+  response.advance(40);
+  assertNote(response, notes[24]);
+  await click(response, "microphoneToggle");
+  assertReleased(response);
+
+  const resized = await startTuning({ resizeObserver: true });
+  resized.input.frequency = 440;
+  resized.advance(80);
+  assertNote(resized, notes[12]);
+  const resizedImage = element(resized, "noteImage");
+  resizedImage.offsetWidth = 500;
+  resizedImage.offsetHeight = 500;
+  const imageObserver = resized.resizeObservers.find(observer => observer.target === resizedImage);
+  assert.ok(imageObserver, "音符画像のサイズ変更を監視していません");
+  imageObserver.callback();
+  assert.equal(element(resized, "notePressMarker").style.left, `${notes[12].xRatio * 500}px`);
+  assert.equal(element(resized, "notePressMarker").style.top, `${notes[12].yRatio * 500}px`);
+  await click(resized, "microphoneToggle");
+  assertReleased(resized);
+
+  for (const sampleRate of [44100, 48000]) {
+    const boundaries = await startTuning({ sampleRate, storage: {
+      "goeikaapp:keyShift": "2", "goeikaapp:tuningOctaveShift": "1"
+    } });
+    for (let index = 0; index < notes.length - 1; index++) {
+      for (const cents of [40, 50, 60]) {
+        boundaries.input.frequency = 0;
+        boundaries.advance(200);
+        const frequency = cents === 50
+          ? Math.sqrt(notes[index].frequency * notes[index + 1].frequency)
+          : notes[index].frequency * 2 ** (cents / 1200);
+        boundaries.input.frequency = frequency * 2 ** (2 / 12 - 1);
+        boundaries.advance(240);
+        if (cents !== 50) {
+          assertNote(boundaries, notes[index + (cents > 50 ? 1 : 0)]);
+        } else {
+          assert.ok(isLit(boundaries), `${index + 1}番と${index + 2}番の中間に判定の空白があります`);
+          const marker = element(boundaries, "notePressMarker");
+          assert.ok([notes[index], notes[index + 1]].some(note =>
+            marker.style.left === `${note.xRatio * 1000}px` && marker.style.top === `${note.yRatio * 1000}px`
+          ), "中間の音を隣接する音符以外に割り当てました");
+        }
+      }
+    }
+    await click(boundaries, "microphoneToggle");
+    assertReleased(boundaries);
+  }
+
+  const edges = await startTuning();
+  for (const [note, cents, expected] of [
+    [notes[0], -49, true], [notes[0], -55, false],
+    [notes[24], 49, true], [notes[24], 55, false]
+  ]) {
+    edges.input.frequency = note.frequency * 2 ** (cents / 1200);
+    edges.advance(240);
+    if (expected) assertNote(edges, note);
+    else assert.equal(isLit(edges), false, "音域外の音を端の音符へ丸めました");
+  }
+  await click(edges, "microphoneToggle");
+  assertReleased(edges);
+
+  for (const sampleRate of [44100, 48000]) {
+    const stable = await startTuning({ sampleRate, storage: {
+      "goeikaapp:keyShift": "2", "goeikaapp:tuningOctaveShift": "1"
+    } });
+    const baseFrequency = notes[12].frequency * 2 ** (2 / 12 - 1);
+    stable.input.frequency = baseFrequency;
+    stable.advance(80);
+    assertNote(stable, notes[12]);
+    for (const cents of [49, 51, 49, 55, 45, 58, 52]) {
+      stable.input.frequency = baseFrequency * 2 ** (cents / 1200);
+      stable.advance(80);
+      assertNote(stable, notes[12]);
+    }
+    stable.input.frequency = baseFrequency * 2 ** (65 / 1200);
+    stable.advance(40);
+    assertNote(stable, notes[12]);
+    stable.advance(40);
+    assertNote(stable, notes[13]);
+    for (const cents of [51, 49, 45, 55, 42]) {
+      stable.input.frequency = baseFrequency * 2 ** (cents / 1200);
+      stable.advance(80);
+      assertNote(stable, notes[13]);
+    }
+    stable.input.frequency = baseFrequency * 2 ** (35 / 1200);
+    stable.advance(40);
+    assertNote(stable, notes[13]);
+    stable.advance(40);
+    assertNote(stable, notes[12]);
+    stable.input.frequency = 0;
+    stable.advance(200);
+    assert.equal(isLit(stable), false, "揺れの保持処理で無音後も点灯しています");
+    stable.input.frequency = baseFrequency * 2 ** (55 / 1200);
+    stable.advance(80);
+    assertNote(stable, notes[13]);
+    await click(stable, "microphoneToggle");
+    assertReleased(stable);
+  }
+
+  const tuning = await startTuning();
+  const request = tuning.microphoneRequests[0];
+  assert.equal(request.video, false);
+  for (const name of ["autoGainControl", "noiseSuppression", "echoCancellation"]) assert.equal(request.audio[name].ideal, false);
+  assert.equal(tuning.navigator.audioSession.type, "play-and-record");
+  assert.equal(tuning.audioContexts[0].gains.length, 0, "マイク入力が出力に接続されました");
+  tuning.input.frequency = 440;
+  tuning.advance(40);
+  assert.equal(isLit(tuning), false, "一瞬の音で点灯しました");
+  tuning.input.frequency = 0;
+  tuning.advance(200);
+  tuning.input.frequency = 440 * 2 ** (20 / 1200);
+  tuning.advance(240);
+  assertNote(tuning, notes[12]);
+  assert.match(element(tuning, "microphonePitch").textContent, /検出：\d+\.\d Hz ／ 点灯基準：五 440\.0 Hz/);
+  const oldLevel = element(tuning, "microphoneLevel").value;
+  tuning.input.frequency = 880;
+  tuning.advance(240);
+  assertNote(tuning, notes[24]);
+  assert.ok(Math.abs(element(tuning, "microphoneLevel").value - oldLevel) < 1, "音程により音量メーターが変化しました");
+  for (const frequency of [100, 1500, 0]) {
+    tuning.input.frequency = frequency;
+    tuning.advance(280);
+    assert.equal(isLit(tuning), false, `音域外・無音(${frequency})で点灯しました`);
+  }
+  tuning.input.frequency = 440;
+  tuning.advance(240);
+  tuning.input.frequency = 440 * 2 ** (40 / 1200);
+  tuning.advance(240);
+  assertNote(tuning, notes[12]);
+  tuning.input.frequency = 0;
+  tuning.advance(80);
+  assert.equal(isLit(tuning), true, "声の短い途切れで点滅しました");
+  tuning.advance(160);
+  assert.equal(isLit(tuning), false, "消灯猶予を過ぎても点灯しています");
+  tuning.input.frequency = 440;
+  tuning.input.harmonics = [0.15, 1];
+  tuning.advance(240);
+  assertNote(tuning, notes[12]);
+  await click(tuning, "keyUp");
+  assert.equal(isLit(tuning), false, "キー変更時に古い判定が残っています");
+  assert.equal(element(tuning, "microphonePitch").textContent, "検出：— ／ 点灯基準：—");
+  tuning.input.harmonics = [1];
+  tuning.input.frequency = notes[12].frequency * 2 ** (1 / 12);
+  tuning.advance(240);
+  assertNote(tuning, notes[12]);
+  assert.match(element(tuning, "microphonePitch").textContent, /点灯基準：五 466\.2 Hz/);
+  await tuning.window.dispatch("resize");
+  tuning.advance(40);
+  assertNote(tuning, notes[12]);
+  await click(tuning, "performanceMode");
+  assertReleased(tuning);
+  assert.equal(tuning.navigator.audioSession.type, "playback");
+  await element(tuning, "noteImage").dispatch("pointerdown", pointerAt(notes[12]));
+  assert.equal(tuning.audioContexts.at(-1).oscillators.length, 4);
+  await element(tuning, "noteImage").dispatch("pointerup", { pointerId: 1 });
+
+  const noise = await startTuning();
+  noise.input.noise = 0.2;
+  noise.advance(320);
+  assert.equal(isLit(noise), false, "雑音を音程として採用しました");
+  noise.input.noise = 0;
+  noise.input.frequency = 440;
+  noise.input.amplitude = 0.006;
+  noise.advance(240);
+  assert.equal(isLit(noise), false, "感度の最小音量を無視しています");
+  element(noise, "microphoneSensitivity").value = "10";
+  await element(noise, "microphoneSensitivity").dispatch("input");
+  noise.advance(240);
+  assertNote(noise, notes[12]);
+  element(noise, "microphoneSensitivity").value = "1";
+  await element(noise, "microphoneSensitivity").dispatch("input");
+  noise.advance(240);
+  assert.equal(isLit(noise), false, "感度を下げても小さい声を無視しません");
+  await click(noise, "microphoneToggle");
+
+  const sensitivityGate = await startTuning();
+  sensitivityGate.input.frequency = 440;
+  for (const [sensitivity, meter, expected] of [
+    [1, 50, false], [1, 64, false], [1, 66, true], [10, 9, false], [10, 11, true]
+  ]) {
+    element(sensitivityGate, "microphoneSensitivity").value = String(sensitivity);
+    await element(sensitivityGate, "microphoneSensitivity").dispatch("input");
+    sensitivityGate.input.amplitude = Math.sqrt(2) * 10 ** ((meter * 0.6 - 60) / 20);
+    sensitivityGate.advance(240);
+    assert.ok(Math.abs(element(sensitivityGate, "microphoneLevel").value - meter) < 0.2, "入力レベルが想定と異なります");
+    if (expected) assertNote(sensitivityGate, notes[12]);
+    else assert.equal(isLit(sensitivityGate), false, `感度${sensitivity}で入力レベル${meter}%の音を除外しません`);
+  }
+  await click(sensitivityGate, "microphoneToggle");
+  assertReleased(sensitivityGate);
+
+  const ambientSensitivity = createAppEnvironment();
+  ambientSensitivity.input.noise = 0.02;
+  await click(ambientSensitivity, "tuningMode");
+  await click(ambientSensitivity, "microphoneToggle");
+  ambientSensitivity.advance(1320);
+  assert.ok(element(ambientSensitivity, "microphoneLevel").value > 30 && element(ambientSensitivity, "microphoneLevel").value < 40);
+  ambientSensitivity.input.frequency = 440;
+  ambientSensitivity.input.amplitude = 0.07;
+  element(ambientSensitivity, "microphoneSensitivity").value = "1";
+  await element(ambientSensitivity, "microphoneSensitivity").dispatch("input");
+  ambientSensitivity.advance(240);
+  assert.equal(isLit(ambientSensitivity), false, "周囲音がある状態で感度1が小声を除外しません");
+  element(ambientSensitivity, "microphoneSensitivity").value = "10";
+  await element(ambientSensitivity, "microphoneSensitivity").dispatch("input");
+  ambientSensitivity.advance(240);
+  assertNote(ambientSensitivity, notes[12]);
+  await click(ambientSensitivity, "microphoneToggle");
+  assertReleased(ambientSensitivity);
+
+  const backgroundNoise = createAppEnvironment();
+  backgroundNoise.input.noise = 0.05;
+  await click(backgroundNoise, "tuningMode");
+  await click(backgroundNoise, "microphoneToggle");
+  backgroundNoise.advance(1320);
+  backgroundNoise.input.noise = 0;
+  backgroundNoise.input.frequency = 440;
+  backgroundNoise.input.amplitude = 0.05;
+  backgroundNoise.advance(240);
+  assert.equal(isLit(backgroundNoise), false, "開始時の周囲音を判定基準に反映していません");
+  backgroundNoise.input.amplitude = 0.2;
+  backgroundNoise.advance(240);
+  assertNote(backgroundNoise, notes[12]);
+  await click(backgroundNoise, "microphoneToggle");
+
+  for (const [options, expected] of [
+    [{ secureContext: false }, /HTTPS/],
+    [{ microphoneUnsupported: true }, /対応していません/],
+    [{ audioUnsupported: true }, /対応していません/],
+    [{ microphoneError: { name: "NotAllowedError" } }, /許可設定/],
+    [{ microphoneError: { name: "NotFoundError" } }, /見つかりません/],
+    [{ microphoneError: { name: "NotReadableError" } }, /使用中/],
+    [{ resumeError: new Error("再開失敗") }, /もう一度/]
+  ]) {
+    const environment = createAppEnvironment(options);
+    await click(environment, "tuningMode");
+    await click(environment, "microphoneToggle");
+    assert.match(element(environment, "microphoneStatus").textContent, expected);
+    assert.equal(element(environment, "microphoneStatus").hidden, false, "マイクのエラーが隠れています");
+    assertReleased(environment);
+  }
+
+  for (const phase of ["permission", "resume"]) {
+    for (const action of ["stop", "mode", "hidden", "pagehide"]) {
+      const gate = createDeferred();
+      const environment = createAppEnvironment(phase === "permission"
+        ? { microphoneGate: gate.promise } : { resumeGate: gate.promise });
+      await click(environment, "tuningMode");
+      const pending = click(environment, "microphoneToggle");
+      assert.equal(environment.microphoneRequests.length, 1);
+      assert.equal(element(environment, "microphoneLevelState").textContent, "許可待ち");
+      // 許可済みでもAudioContextの再開待ちが残る順序を再現する。
+      if (phase === "resume") {
+        await Promise.resolve();
+        await Promise.resolve();
+      }
+      if (action === "stop") await click(environment, "microphoneToggle");
+      if (action === "mode") await click(environment, "performanceMode");
+      if (action === "hidden") {
+        environment.document.hidden = true;
+        environment.document.visibilityState = "hidden";
+        await environment.document.dispatch("visibilitychange");
+      }
+      if (action === "pagehide") await environment.window.dispatch("pagehide");
+      gate.resolve(phase === "permission" ? environment.createStream() : undefined);
+      await pending;
+      environment.advance(2000);
+      assertReleased(environment);
+      assert.ok(environment.audioContexts.every(audio => audio.sources.length === 0), "取り消した入力の解析を開始しました");
+    }
+  }
+
+  const oldPermission = createDeferred();
+  const newPermission = createDeferred();
+  let requests = 0;
+  const repeated = createAppEnvironment({ getUserMedia: () => ++requests === 1 ? oldPermission.promise : newPermission.promise });
+  await click(repeated, "tuningMode");
+  const oldStart = click(repeated, "microphoneToggle");
+  await click(repeated, "microphoneToggle");
+  const newStart = click(repeated, "microphoneToggle");
+  const currentStream = repeated.createStream();
+  newPermission.resolve(currentStream);
+  await newStart;
+  const staleStream = repeated.createStream();
+  oldPermission.resolve(staleStream);
+  await oldStart;
+  assert.equal(staleStream.track.readyState, "ended", "古い許可要求の入力が残っています");
+  assert.equal(currentStream.track.readyState, "live", "古い処理が現在の入力を停止しました");
+  assert.equal(element(repeated, "microphoneLevelState").textContent, "測定中");
+  await click(repeated, "microphoneToggle");
+  assertReleased(repeated);
+
+  for (const action of ["hidden", "pagehide", "ended", "interrupted"]) {
+    const environment = await startTuning();
+    environment.input.frequency = 440;
+    environment.advance(240);
+    assertNote(environment, notes[12]);
+    if (action === "hidden") {
+      environment.document.hidden = true;
+      environment.document.visibilityState = "hidden";
+      await environment.document.dispatch("visibilitychange");
+    }
+    if (action === "pagehide") await environment.window.dispatch("pagehide");
+    if (action === "ended") await environment.streams[0].track.dispatch("ended");
+    if (action === "interrupted") {
+      environment.audioContexts[0].state = "interrupted";
+      environment.audioContexts[0].onstatechange();
+    }
+    assertReleased(environment);
+    environment.document.hidden = false;
+    environment.document.visibilityState = "visible";
+    await environment.document.dispatch("visibilitychange");
+    assert.equal(environment.microphoneRequests.length, 1, "復帰時にマイクを自動開始しました");
+    await click(environment, "microphoneToggle");
+    assert.equal(environment.microphoneRequests.length, 2, "中断後にマイクを再開できません");
+    await click(environment, "microphoneToggle");
+    assertReleased(environment);
+  }
 }
 
 runChecks()

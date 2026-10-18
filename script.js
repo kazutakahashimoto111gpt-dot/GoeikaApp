@@ -246,6 +246,8 @@ function updateKeyMultiplier() {
       keyShift / 12
     );
 
+  if (currentMode === "tuning") resetTuningDetection();
+
 }
 
 
@@ -396,15 +398,17 @@ updateKeyDisplay();
 
 
 
-if (
-  "audioSession" in navigator
-) {
-
-  // iOSのマナーモードでも再生音として扱われるよう明示する。
-  navigator.audioSession.type =
-    "playback";
-
+function setAudioSessionType(type) {
+  if (!("audioSession" in navigator)) return;
+  try {
+    // iOSの再生経路とマイク入力の用途を、利用中のモードに合わせる。
+    navigator.audioSession.type = type;
+  } catch (error) {
+    console.warn("音声セッションの種類を変更できませんでした。", error);
+  }
 }
+
+setAudioSessionType("playback");
 
 
 
@@ -524,6 +528,18 @@ async function ensureAudioContext() {
 
 
 
+function releasePlaybackAudio() {
+  const previous = audioContext;
+  // close完了前に参照を外し、別モードや復帰後の再利用を防ぐ。
+  audioContext = null;
+  audioContextNeedsReset = false;
+  if (previous && previous.state !== "closed") {
+    previous.close().catch(error => {
+      console.warn("AudioContextを終了できませんでした。", error);
+    });
+  }
+}
+
 // バックグラウンド移行時に音声と演奏状態を破棄する。
 
 document.addEventListener(
@@ -538,59 +554,9 @@ document.addEventListener(
     ) {
 
 
-      stopSound();
-
-      hideNotePress();
-
-
-      const oldAudioContext =
-        audioContext;
-
-
-
-      // close完了前に参照を外し、復帰時の再利用を防ぐ。
-      audioContext =
-        null;
-
-
-
-      audioContextNeedsReset =
-        false;
-
-
-
-      if (
-        oldAudioContext &&
-        oldAudioContext.state !==
-          "closed"
-      ) {
-
-        oldAudioContext.close()
-          .catch(
-            function(error) {
-
-              console.warn(
-                "AudioContextを終了できませんでした。",
-                error
-              );
-
-            }
-          );
-
-      }
-
-
-
-      isPointerPlaying =
-        false;
-
-
-      activePointerId =
-        null;
-
-
-      lastPlayedNote =
-        null;
+      resetPointerPlaying();
+      microphone.stop();
+      releasePlaybackAudio();
 
     }
   }
@@ -1260,6 +1226,8 @@ let activePointerId =
 let lastPlayedNote =
   null;
 
+let pointerStartVersion = 0;
+
 // =====================================
 // 指定位置の音符を探して鳴らす
 // =====================================
@@ -1267,6 +1235,8 @@ let lastPlayedNote =
 function playNoteAtPointer(
   event
 ) {
+
+  if (currentMode !== "performance") return;
 
 
   const rect =
@@ -1459,6 +1429,8 @@ image.addEventListener(
     */
     event.preventDefault();
 
+    if (currentMode !== "performance") return;
+
 
     if (
       activePointerId !== null &&
@@ -1478,6 +1450,8 @@ image.addEventListener(
       null;
 
 
+    const startVersion = ++pointerStartVersion;
+
     try {
 
       await ensureAudioContext();
@@ -1485,6 +1459,8 @@ image.addEventListener(
     }
 
     catch (error) {
+
+      if (startVersion !== pointerStartVersion) return;
 
       console.warn(
         "AudioContextの準備に失敗しました。",
@@ -1514,8 +1490,9 @@ image.addEventListener(
 
     // 音声初期化中に終了した操作を演奏として開始しない。
     if (
-      event.pointerId !==
-      activePointerId
+      event.pointerId !== activePointerId ||
+      startVersion !== pointerStartVersion ||
+      currentMode !== "performance"
     ) {
 
       return;
@@ -1654,8 +1631,8 @@ image.addEventListener(
 
 
     if (
-      event.pointerId !==
-      activePointerId
+      event.pointerId !== activePointerId ||
+      currentMode !== "performance"
     ) {
 
       return;
@@ -1679,6 +1656,8 @@ image.addEventListener(
 // =====================================
 
 function resetPointerPlaying() {
+
+  pointerStartVersion++;
 
   stopSound();
 
@@ -1758,7 +1737,9 @@ window.addEventListener(
 window.addEventListener(
   "blur",
 
-  resetPointerPlaying
+  () => {
+    if (currentMode === "performance") resetPointerPlaying();
+  }
 );
 
 
@@ -1782,6 +1763,210 @@ image.addEventListener(
   }
 
 );
+
+// モード管理とマイクの解析結果だけを受け持ち、音声入力の資源管理は分離する。
+const performanceModeButton = document.getElementById("performanceMode");
+const tuningModeButton = document.getElementById("tuningMode");
+const microphonePanel = document.getElementById("microphonePanel");
+const microphoneToggle = document.getElementById("microphoneToggle");
+const microphoneLevel = document.getElementById("microphoneLevel");
+const microphoneLevelState = document.getElementById("microphoneLevelState");
+const microphoneStatus = document.getElementById("microphoneStatus");
+const microphonePitch = document.getElementById("microphonePitch");
+const microphoneSensitivity = document.getElementById("microphoneSensitivity");
+const microphoneSensitivityValue = document.getElementById("microphoneSensitivityValue");
+const tuningOctaveButtons = [
+  { shift: -1, button: document.getElementById("tuningOctaveDown") },
+  { shift: 0, button: document.getElementById("tuningOctaveNone") },
+  { shift: 1, button: document.getElementById("tuningOctaveUp") }
+];
+const TUNING_OCTAVE_KEY = "goeikaapp:tuningOctaveShift";
+
+function loadMode() {
+  try {
+    return localStorage.getItem("goeikaapp:mode") === "tuning" ? "tuning" : "performance";
+  } catch (error) {
+    return "performance";
+  }
+}
+
+function loadTuningOctaveShift() {
+  try {
+    const stored = localStorage.getItem(TUNING_OCTAVE_KEY);
+    return ["-1", "0", "1"].includes(stored) ? Number(stored) : 0;
+  } catch (error) {
+    return 0;
+  }
+}
+
+let currentMode = loadMode();
+let tuningOctaveShift = loadTuningOctaveShift();
+let tuningCandidate = null;
+let tuningCandidateSince = 0;
+let tuningCandidateFrames = 0;
+let tuningLastFrameAt = 0;
+let tuningLastMatchedAt = 0;
+
+function resetTuningDetection() {
+  tuningCandidate = null;
+  tuningCandidateFrames = 0;
+  tuningLastFrameAt = 0;
+  tuningLastMatchedAt = 0;
+  hideNotePress();
+  updateTuningPitchDisplay(null);
+}
+
+function updateTuningPitchDisplay(frequency) {
+  const valid = Number.isFinite(frequency) && frequency > 0;
+  const detected = valid ? `${frequency.toFixed(1)} Hz` : "—";
+  const corrected = tuningOctaveShift === 0 ? ""
+    : ` ／ 補正後：${valid ? `${(frequency * 2 ** tuningOctaveShift).toFixed(1)} Hz` : "—"}`;
+  const target = pressedNote
+    ? `${pressedNote.name} ${(pressedNote.frequency * keyMultiplier).toFixed(1)} Hz` : "—";
+  const description = `検出：${detected}${corrected} ／ 点灯基準：${target}`;
+  if (microphonePitch.textContent !== description) microphonePitch.textContent = description;
+}
+
+function showDetectedPitch(frequency, time) {
+  if (currentMode !== "tuning") return;
+  let nearest = null;
+  let nearestCents = Infinity;
+  if (Number.isFinite(frequency) && frequency > 0) {
+    // 声域に合わせた表示補正は判定だけに適用し、検出値や演奏用のキー設定と分離する。
+    const correctedFrequency = frequency * 2 ** tuningOctaveShift;
+    for (const note of notes) {
+      const cents = Math.abs(1200 * Math.log2(correctedFrequency / (note.frequency * keyMultiplier)));
+      if (cents < nearestCents) {
+        nearest = note;
+        nearestCents = cents;
+      }
+    }
+    // 境界に10セントの余裕を設け、小さな揺れによる点灯の往復を抑える。
+    if (pressedNote &&
+      Math.abs(1200 * Math.log2(correctedFrequency / (pressedNote.frequency * keyMultiplier))) <= 60.01) {
+      nearest = pressedNote;
+    }
+  }
+  // 0.01セントの丸め誤差を見込み、半音の中間まで最も近い音符に割り当てる。
+  if (nearestCents > 50.01) nearest = null;
+  if (nearest && nearest === pressedNote) {
+    tuningLastMatchedAt = time;
+    tuningCandidate = null;
+    tuningCandidateFrames = 0;
+  } else if (nearest) {
+    if (nearest !== tuningCandidate || time - tuningLastFrameAt > 120) {
+      tuningCandidate = nearest;
+      tuningCandidateSince = time;
+      tuningCandidateFrames = 0;
+    }
+    tuningCandidateFrames++;
+    // 単発の物音を除きつつ素早く追従するため、解析1回分だけ安定を待つ。
+    if (time - tuningCandidateSince >= 40 && tuningCandidateFrames >= 2) {
+      showNotePress(nearest);
+      tuningLastMatchedAt = time;
+    }
+  } else {
+    tuningCandidate = null;
+    tuningCandidateFrames = 0;
+  }
+  tuningLastFrameAt = time;
+  // 声の短い途切れを許しつつ、無音・音域外では表示を残さない。
+  if (pressedNote && time - tuningLastMatchedAt >= 160) hideNotePress();
+
+  // 元の検出値も残し、補正を含む判定と実際の入力を見比べられるようにする。
+  updateTuningPitchDisplay(frequency);
+}
+
+const microphone = new window.GoeikaMicrophone({
+  onState(state, message) {
+    const stopped = state === "stopped";
+    microphoneToggle.textContent = stopped ? "マイク開始" : "マイク停止";
+    microphoneToggle.setAttribute("aria-pressed", String(!stopped));
+    microphoneStatus.textContent = message;
+    // 通常の状態はレベル欄で示し、開始時の案内とエラーだけを追加表示する。
+    microphoneStatus.hidden = state === "listening" || (stopped && message === "マイク停止中");
+    microphoneLevelState.textContent = stopped ? "停止中"
+      : state === "requesting" ? "許可待ち" : state === "calibrating" ? "測定中" : "入力中";
+    setAudioSessionType(stopped ? "playback" : "play-and-record");
+    if (state !== "listening") resetTuningDetection();
+  },
+  onLevel(level) { microphoneLevel.value = level; },
+  onPitch: showDetectedPitch
+});
+
+microphone.stop();
+
+function updateTuningOctaveDisplay() {
+  for (const { shift, button } of tuningOctaveButtons) {
+    button.setAttribute("aria-pressed", String(shift === tuningOctaveShift));
+  }
+}
+
+updateTuningOctaveDisplay();
+for (const { shift, button } of tuningOctaveButtons) {
+  button.addEventListener("click", () => {
+    if (shift === tuningOctaveShift) return;
+    tuningOctaveShift = shift;
+    updateTuningOctaveDisplay();
+    resetTuningDetection();
+    try {
+      localStorage.setItem(TUNING_OCTAVE_KEY, String(tuningOctaveShift));
+    } catch (error) {
+      // 保存できない環境でも、この起動中は選んだ補正で判定を続ける。
+    }
+  });
+}
+
+microphoneSensitivity.value = microphone.sensitivity;
+microphoneSensitivityValue.textContent = microphone.sensitivity;
+microphoneSensitivity.addEventListener("input", () => {
+  microphone.setSensitivity(microphoneSensitivity.value);
+  microphoneSensitivity.value = microphone.sensitivity;
+  microphoneSensitivityValue.textContent = microphone.sensitivity;
+  resetTuningDetection();
+});
+microphoneToggle.addEventListener("click", () => {
+  if (currentMode !== "tuning") return;
+  if (microphone.state === "stopped") return microphone.start();
+  microphone.stop();
+});
+
+function updateModeDisplay() {
+  const tuning = currentMode === "tuning";
+  performanceModeButton.setAttribute("aria-pressed", String(!tuning));
+  tuningModeButton.setAttribute("aria-pressed", String(tuning));
+  microphonePanel.hidden = !tuning;
+  document.getElementById("portraitApp").setAttribute("data-mode", currentMode);
+  requestAnimationFrame(refreshNotePress);
+}
+
+function changeMode(mode) {
+  if (currentMode === mode) return;
+  resetPointerPlaying();
+  microphone.stop();
+  releasePlaybackAudio();
+  currentMode = mode;
+  updateModeDisplay();
+  try {
+    localStorage.setItem("goeikaapp:mode", mode);
+  } catch (error) {
+    // 保存できなくても、選んだモードで操作を続ける。
+  }
+}
+
+performanceModeButton.addEventListener("click", () => changeMode("performance"));
+tuningModeButton.addEventListener("click", () => changeMode("tuning"));
+updateModeDisplay();
+
+// 案内文の折り返しなどで図の大きさが変わった場合も、点灯の座標を合わせ直す。
+if (window.ResizeObserver) new window.ResizeObserver(refreshNotePress).observe(image);
+
+// iOSでページが履歴へ退避された場合も入力を解放し、自動再開させない。
+window.addEventListener("pagehide", () => {
+  resetPointerPlaying();
+  microphone.stop();
+  releasePlaybackAudio();
+});
 
 // =====================================
 // アプリ情報ダイアログ

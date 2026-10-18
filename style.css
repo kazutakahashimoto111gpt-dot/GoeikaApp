@@ -1145,3 +1145,184 @@ body.is-info-open {
   color: #777;
 
 }
+
+/* コンテナ単位に未対応の環境では、縦画面相当の高さから操作部を差し引く。 */
+#portraitApp {
+  --app-block-size: 100vh;
+  --controls-space: 130px;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 6px;
+  box-sizing: border-box;
+}
+
+@supports (height: 100dvh) {
+  #portraitApp { --app-block-size: 100dvh; }
+}
+
+#portraitApp[data-mode="tuning"] { --controls-space: 320px; }
+
+#imageArea {
+  flex: 1 1 0;
+  width: 100%;
+  min-height: 0;
+  max-width: 100%;
+  max-height: none;
+  justify-content: center;
+}
+
+#noteStage,
+#noteImage {
+  max-height: max(40px, calc(var(--app-block-size) - var(--controls-space)));
+}
+
+#noteStage { flex-shrink: 0; }
+
+#keyControl { margin-top: 6px; padding: 4px 8px; gap: 6px; }
+#keyDown,
+#keyUp { width: 44px; height: 44px; font-size: 26px; }
+#keyDisplay { min-width: 72px; height: 44px; font-size: 22px; }
+
+/* 操作部の実際の高さに追従し、残った領域いっぱいまで図を広げる。キー操作部は60px。 */
+@supports (height: 1cqh) {
+  #imageArea { container-type: size; }
+  #noteStage,
+  #noteImage { max-height: max(40px, calc(100cqh - 60px)); }
+}
+
+#modeControl {
+  display: flex;
+  flex-shrink: 0;
+  gap: 4px;
+  padding: 2px;
+  border: 1px solid #c8b78f;
+  border-radius: 24px;
+  background: #f4eddf;
+}
+
+#modeControl button,
+#microphoneToggle {
+  min-height: 36px;
+  border: 1px solid transparent;
+  border-radius: 20px;
+  padding: 6px 12px;
+  background: transparent;
+  color: #685023;
+  font: 600 14px/1.4 sans-serif;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+#modeControl button[aria-pressed="true"],
+#microphoneToggle {
+  border-color: #bfa361;
+  background: linear-gradient(145deg, #fffaf0, #e6d1a0);
+  box-shadow: 0 2px 5px #674b1a24;
+}
+
+#microphoneToggle[aria-pressed="true"] {
+  border-color: #9c683e;
+  background: #f1dfc8;
+}
+
+#microphonePanel {
+  width: min(470px, 100%);
+  flex-shrink: 0;
+  padding: 8px 10px;
+  box-sizing: border-box;
+  border: 1px solid #c8b78f;
+  border-radius: 14px;
+  background: #fffaf0eb;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+#microphonePanel[hidden] { display: none; }
+
+.microphone-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.microphone-row label,
+.microphone-label { flex-shrink: 0; }
+.microphone-setting { margin-top: 6px; }
+
+#microphoneToggle {
+  flex-shrink: 0;
+  padding: 6px 10px;
+  font-size: 13px;
+}
+
+#microphoneLevelState { font-size: 11px; }
+
+#microphoneLevel {
+  width: 100%;
+  min-width: 30px;
+  height: 18px;
+}
+
+#microphoneSensitivity {
+  width: 100%;
+  min-width: 40px;
+  margin: 0;
+  accent-color: #947126;
+  touch-action: none;
+}
+
+#microphoneStatus { margin: 4px 0 0; font-size: 12px; }
+#microphonePitch { margin: 6px 0 0; font-size: 11px; line-height: 1.4; overflow-wrap: anywhere; }
+#tuningOctaveShift {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid #c8b78f;
+  border-radius: 10px;
+  background: #f4eddf;
+}
+#tuningOctaveShift button {
+  flex: 1;
+  min-width: 0;
+  min-height: 32px;
+  padding: 4px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: #685023;
+  font: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+#tuningOctaveShift button[aria-pressed="true"] {
+  border-color: #bfa361;
+  background: linear-gradient(145deg, #fffaf0, #e6d1a0);
+  box-shadow: 0 1px 3px #674b1a24;
+}
+.sensitivity-end { font-size: 11px; color: #786849; }
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible { outline: 2px solid #86601c; outline-offset: 3px; }
+
+#portraitApp[data-mode="tuning"] #noteImage { cursor: default; }
+
+@media (orientation: landscape) and (pointer: coarse) {
+  #portraitApp { --app-block-size: 100vw; }
+  @supports (height: 100dvw) {
+    #portraitApp { --app-block-size: 100dvw; }
+  }
+}

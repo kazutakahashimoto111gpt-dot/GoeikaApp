@@ -4,7 +4,7 @@ const CACHE_PREFIX =
   "goeikaapp-main-";
 
 const CACHE_NAME =
-  CACHE_PREFIX + "v1.0.54";
+  CACHE_PREFIX + "v1.1.0";
 
 // 旧main版と現行main版のバージョン付きキャッシュだけを管理する。
 const MAIN_CACHE_NAME_PATTERN =
@@ -23,6 +23,8 @@ const FILES_TO_CACHE = [
   "./style.css",
 
   "./script.js",
+
+  "./microphone.js",
 
   "./manifest.json",
 

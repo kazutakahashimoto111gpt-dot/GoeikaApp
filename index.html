@@ -66,6 +66,11 @@
 
   <div id="portraitApp">
 
+  <div id="modeControl" role="group" aria-label="モード切替">
+    <button id="performanceMode" type="button" aria-pressed="true">演奏モード</button>
+    <button id="tuningMode" type="button" aria-pressed="false">調律モード</button>
+  </div>
+
   <!-- 音符画像エリア -->
 
   <div id="imageArea">
@@ -123,6 +128,31 @@
 
 
   </div>
+
+  <section id="microphonePanel" aria-label="マイク設定" hidden>
+    <div class="microphone-row">
+      <button id="microphoneToggle" type="button" aria-pressed="false">マイク開始</button>
+      <label for="microphoneLevel">入力レベル <span id="microphoneLevelState">停止中</span></label>
+      <meter id="microphoneLevel" min="0" max="100" value="0" aria-label="マイク入力の音量"></meter>
+    </div>
+    <p id="microphoneStatus" role="status" hidden>マイク停止中</p>
+    <div class="microphone-row microphone-setting">
+      <span class="microphone-label" id="tuningOctaveLabel">点灯補正（１オクターブ）</span>
+      <div id="tuningOctaveShift" role="group" aria-labelledby="tuningOctaveLabel">
+        <button id="tuningOctaveDown" type="button" aria-pressed="false" aria-label="点灯する音符を1オクターブ下げる" title="点灯する音符を1オクターブ下げる">下</button>
+        <button id="tuningOctaveNone" type="button" aria-pressed="true" aria-label="点灯補正なし">なし</button>
+        <button id="tuningOctaveUp" type="button" aria-pressed="false" aria-label="点灯する音符を1オクターブ上げる" title="点灯する音符を1オクターブ上げる">上</button>
+      </div>
+    </div>
+    <div class="microphone-row microphone-setting">
+      <label for="microphoneSensitivity">点灯感度 <output id="microphoneSensitivityValue" for="microphoneSensitivity">5</output></label>
+      <span class="sensitivity-end" aria-hidden="true">低</span>
+      <input id="microphoneSensitivity" type="range" min="1" max="10" step="1" value="5" aria-describedby="microphoneSensitivityHint">
+      <span class="sensitivity-end" aria-hidden="true">高</span>
+    </div>
+    <span id="microphoneSensitivityHint" class="sr-only">感度を低くすると小さい周囲の音を無視し、高くすると小さい声にも反応します。</span>
+    <p id="microphonePitch">検出：— ／ 点灯基準：—</p>
+  </section>
 
     <!-- アプリ情報 -->
 
@@ -213,6 +243,8 @@
   <!-- script.jsが参照する音符データを先に読み込む。 -->
 
   <script src="notes.js"></script>
+
+  <script src="microphone.js"></script>
 
 
   <script src="script.js"></script>
